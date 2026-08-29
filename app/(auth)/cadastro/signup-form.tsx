@@ -1,17 +1,38 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { signup, type ActionResult } from "@/lib/auth/actions";
+import { signupSchema, type SignupInput } from "@/lib/validation/schemas";
 
-const initial: ActionResult = { ok: true, data: undefined };
+const INITIAL: ActionResult = { ok: true, data: undefined };
 
 export function SignupForm() {
-  const [state, formAction, pending] = useActionState(signup, initial);
+  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [pending, startTransition] = useTransition();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignupInput>({ resolver: zodResolver(signupSchema) });
+
+  function onSubmit(values: SignupInput) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("displayName", values.displayName);
+      fd.set("email", values.email);
+      fd.set("password", values.password);
+      const result = await signup(INITIAL, fd);
+      setState(result);
+    });
+  }
+
+  const done = state.ok;
   const error = state.ok ? "" : state.message;
-  const done = state.ok && !(state as { message?: string }).message;
 
   return (
     <Card className="w-full max-w-md">
@@ -28,18 +49,22 @@ export function SignupForm() {
             </p>
           </div>
         ) : (
-          <form action={formAction} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div className="space-y-2">
               <label htmlFor="displayName" className="text-sm font-medium">
                 Como quer ser chamado?
               </label>
-              <Input id="displayName" name="displayName" autoComplete="name" required />
+              <Input id="displayName" autoComplete="name" {...register("displayName")} />
+              {errors.displayName && (
+                <p className="text-sm text-destructive">{errors.displayName.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 E-mail
               </label>
-              <Input id="email" name="email" type="email" autoComplete="email" required />
+              <Input id="email" type="email" autoComplete="email" {...register("email")} />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
@@ -47,12 +72,14 @@ export function SignupForm() {
               </label>
               <Input
                 id="password"
-                name="password"
                 type="password"
                 autoComplete="new-password"
                 minLength={8}
-                required
+                {...register("password")}
               />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Ao criar a conta você concorda com nossos Termos e Política de Privacidade.

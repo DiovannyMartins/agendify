@@ -1,16 +1,36 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { login, type ActionResult } from "@/lib/auth/actions";
+import { loginSchema, type LoginInput } from "@/lib/validation/schemas";
 
-const initial: ActionResult = { ok: true, data: undefined };
+const INITIAL: ActionResult = { ok: true, data: undefined };
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(login, initial);
+  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [pending, startTransition] = useTransition();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+
+  function onSubmit(values: LoginInput) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("email", values.email);
+      fd.set("password", values.password);
+      const result = await login(INITIAL, fd);
+      setState(result);
+    });
+  }
+
   const error = state.ok ? "" : state.message;
 
   return (
@@ -20,18 +40,25 @@ export function LoginForm() {
         <CardDescription>Acesse seu painel do Agendify.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               E-mail
             </label>
-            <Input id="email" name="email" type="email" autoComplete="email" required />
+            <Input id="email" type="email" autoComplete="email" {...register("email")} />
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
               Senha
             </label>
-            <Input id="password" name="password" type="password" autoComplete="current-password" required />
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              {...register("password")}
+            />
+            {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={pending}>

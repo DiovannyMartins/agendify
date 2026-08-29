@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,13 +14,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  createService,
-  updateService,
-  type ActionResult,
-} from "@/lib/services/actions";
+import { createService, updateService, type ActionResult } from "@/lib/services/actions";
+import { serviceFormSchema, type ServiceFormValues } from "@/lib/validation/schemas";
 
-const INITIAL = { ok: true } as ActionResult;
+const INITIAL: ActionResult = { ok: true, data: undefined };
 
 type ServiceRow = {
   id: string;
@@ -28,16 +27,39 @@ type ServiceRow = {
   priceCents: number;
 };
 
-function FieldError({ errors }: { errors?: string[] }) {
-  if (!errors?.length) return null;
-  return <p className="text-sm text-destructive">{errors[0]}</p>;
-}
-
 export function ServiceForm({ service }: { service?: ServiceRow }) {
-  const action = service ? updateService : createService;
-  const [state, formAction, pending] = useActionState(action, INITIAL);
-  const fieldErrors = state.ok ? undefined : state.fieldErrors;
   const [open, setOpen] = useState(false);
+  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [pending, startTransition] = useTransition();
+  const action = service ? updateService : createService;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceFormSchema),
+    defaultValues: {
+      name: service?.name ?? "",
+      description: service?.description ?? "",
+      durationMinutes: service?.durationMinutes ?? 30,
+      price: service ? (service.priceCents / 100).toFixed(2) : "",
+    },
+  });
+
+  function onSubmit(values: ServiceFormValues) {
+    startTransition(async () => {
+      const fd = new FormData();
+      if (service) fd.set("id", service.id);
+      fd.set("name", values.name);
+      fd.set("description", values.description ?? "");
+      fd.set("durationMinutes", String(values.durationMinutes));
+      fd.set("price", values.price);
+      const result = await action(INITIAL, fd);
+      setState(result);
+      if (result.ok) setOpen(false);
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -50,55 +72,34 @@ export function ServiceForm({ service }: { service?: ServiceRow }) {
         <DialogHeader>
           <DialogTitle>{service ? "Editar serviço" : "Criar serviço"}</DialogTitle>
         </DialogHeader>
-        <form
-          action={formAction}
-          className="space-y-4"
-          onSubmit={(e) => {
-            if (state?.ok === false) e.preventDefault();
-          }}
-        >
-          {service && <input type="hidden" name="id" value={service.id} />}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
-            <Input id="name" name="name" defaultValue={service?.name} required />
-            <FieldError errors={fieldErrors?.name} />
+            <Input id="name" {...register("name")} />
+            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Descrição (opcional)</Label>
-            <Textarea
-              id="description"
-              name="description"
-              defaultValue={service?.description ?? ""}
-              maxLength={500}
-              rows={3}
-            />
+            <Textarea id="description" rows={3} maxLength={500} {...register("description")} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="durationMinutes">Duração (min)</Label>
               <Input
                 id="durationMinutes"
-                name="durationMinutes"
                 type="number"
-                defaultValue={service?.durationMinutes}
                 min={5}
                 max={480}
-                required
+                {...register("durationMinutes", { valueAsNumber: true })}
               />
-              <FieldError errors={fieldErrors?.durationMinutes} />
+              {errors.durationMinutes && (
+                <p className="text-sm text-destructive">{errors.durationMinutes.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Preço (R$)</Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={service ? (service.priceCents / 100).toFixed(2) : ""}
-                required
-              />
-              <FieldError errors={fieldErrors?.priceCents} />
+              <Input id="price" type="text" inputMode="decimal" placeholder="49.90" {...register("price")} />
+              {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
             </div>
           </div>
           {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}

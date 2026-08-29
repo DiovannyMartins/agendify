@@ -1,16 +1,38 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { requestPasswordReset, type ActionResult } from "@/lib/auth/actions";
 
-const initial: ActionResult = { ok: true, data: undefined };
+const INITIAL: ActionResult = { ok: true, data: undefined };
+
+const schema = z.object({ email: z.string().trim().email("Informe um e-mail válido.") });
+type Values = z.infer<typeof schema>;
 
 export function ForgotPasswordForm() {
-  const [state, formAction, pending] = useActionState(requestPasswordReset, initial);
-  const done = state.ok && !(state as { message?: string }).message;
+  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [pending, startTransition] = useTransition();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Values>({ resolver: zodResolver(schema) });
+
+  const done = state.ok;
+  const serverError = state.ok ? "" : state.message;
+
+  function onSubmit(values: Values) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("email", values.email);
+      setState(await requestPasswordReset(INITIAL, fd));
+    });
+  }
 
   return (
     <Card className="w-full max-w-md">
@@ -19,7 +41,7 @@ export function ForgotPasswordForm() {
         <CardDescription>Enviaremos um link seguro para redefinir sua senha.</CardDescription>
       </CardHeader>
       <CardContent>
-        {done ? (
+        {done && !pending ? (
           <div className="space-y-3 text-center text-sm">
             <p className="font-medium">E-mail enviado!</p>
             <p className="text-muted-foreground">
@@ -27,14 +49,15 @@ export function ForgotPasswordForm() {
             </p>
           </div>
         ) : (
-          <form action={formAction} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 E-mail
               </label>
-              <Input id="email" name="email" type="email" autoComplete="email" required />
+              <Input id="email" type="email" autoComplete="email" {...register("email")} />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
-            {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}
+            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? "Enviando..." : "Enviar link"}
             </Button>

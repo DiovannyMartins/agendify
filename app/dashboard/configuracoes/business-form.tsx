@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,19 +22,55 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { upsertBusiness, type ActionResult } from "@/lib/business/actions";
+import { businessFormSchema, type BusinessFormValues } from "@/lib/validation/schemas";
 
 const TIMEZONES = ["America/Sao_Paulo", "America/New_York", "Europe/Lisbon", "Europe/London"];
-const INITIAL = { ok: true } as ActionResult;
+const INITIAL: ActionResult = { ok: true, data: undefined };
 
-function FieldError({ errors }: { errors?: string[] }) {
-  if (!errors?.length) return null;
-  return <p className="text-sm text-destructive">{errors[0]}</p>;
-}
-
-export function BusinessForm({ initial }: { initial?: Partial<Record<string, unknown>> | null }) {
-  const [state, formAction, pending] = useActionState(upsertBusiness, INITIAL);
-  const fieldErrors = state.ok ? undefined : state.fieldErrors;
+export function BusinessForm({
+  initial,
+}: {
+  initial?: Partial<Record<string, unknown>> | null;
+}) {
+  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [pending, startTransition] = useTransition();
   const slug = typeof initial?.slug === "string" ? initial.slug : "";
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<BusinessFormValues>({
+    resolver: zodResolver(businessFormSchema),
+    defaultValues: {
+      name: String(initial?.name ?? ""),
+      slug,
+      phone: String(initial?.phone ?? ""),
+      timezone: String(initial?.timezone ?? "America/Sao_Paulo"),
+      slotIntervalMinutes: String(initial?.slotIntervalMinutes ?? 30),
+      minNoticeMinutes: Number(initial?.minNoticeMinutes ?? 120),
+      bookingWindowDays: Number(initial?.bookingWindowDays ?? 60),
+      description: String(initial?.description ?? ""),
+    },
+  });
+
+  function onSubmit(values: BusinessFormValues) {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("name", values.name);
+      fd.set("slug", values.slug);
+      fd.set("phone", values.phone);
+      fd.set("timezone", values.timezone);
+      fd.set("slotIntervalMinutes", values.slotIntervalMinutes);
+      fd.set("minNoticeMinutes", String(values.minNoticeMinutes));
+      fd.set("bookingWindowDays", String(values.bookingWindowDays));
+      fd.set("description", values.description ?? "");
+      setState(await upsertBusiness(INITIAL, fd));
+    });
+  }
+
+  const fieldErrors = state.ok ? {} : (state.fieldErrors ?? {});
 
   return (
     <Card className="w-full">
@@ -43,105 +81,128 @@ export function BusinessForm({ initial }: { initial?: Partial<Record<string, unk
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={formAction} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Nome do negócio</Label>
-              <Input id="name" name="name" defaultValue={String(initial?.name ?? "")} required />
-              <FieldError errors={fieldErrors?.name} />
+              <Input id="name" {...register("name")} />
+              {(errors.name || fieldErrors.name) && (
+                <p className="text-sm text-destructive">
+                  {errors.name?.message ?? fieldErrors.name?.[0]}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Endereço público (slug)</Label>
-              <Input
-                id="slug"
-                name="slug"
-                defaultValue={slug}
-                placeholder="minha-barbearia"
-                required
-              />
+              <Input id="slug" placeholder="minha-barbearia" {...register("slug")} />
               <p className="text-xs text-muted-foreground">
                 Apenas minúsculas, números e hífen. Seu link: agendify.app/{slug || "seu-slug"}
               </p>
-              <FieldError errors={fieldErrors?.slug} />
+              {(errors.slug || fieldErrors.slug) && (
+                <p className="text-sm text-destructive">
+                  {errors.slug?.message ?? fieldErrors.slug?.[0]}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone / WhatsApp</Label>
-              <Input id="phone" name="phone" defaultValue={String(initial?.phone ?? "")} required />
-              <FieldError errors={fieldErrors?.phone} />
+              <Input id="phone" {...register("phone")} />
+              {(errors.phone || fieldErrors.phone) && (
+                <p className="text-sm text-destructive">
+                  {errors.phone?.message ?? fieldErrors.phone?.[0]}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="timezone">Fuso horário</Label>
-              <Select name="timezone" defaultValue={String(initial?.timezone ?? "America/Sao_Paulo")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Escolha o fuso" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz} value={tz}>
-                      {tz}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError errors={fieldErrors?.timezone} />
+              <Controller
+                control={control}
+                name="timezone"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha o fuso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEZONES.map((tz) => (
+                        <SelectItem key={tz} value={tz}>
+                          {tz}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {(errors.timezone || fieldErrors.timezone) && (
+                <p className="text-sm text-destructive">
+                  {errors.timezone?.message ?? fieldErrors.timezone?.[0]}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição (opcional)</Label>
-            <Textarea
-              id="description"
-              name="description"
-              defaultValue={String(initial?.description ?? "")}
-              maxLength={500}
-              rows={3}
-            />
-            <FieldError errors={fieldErrors?.description} />
+            <Textarea id="description" rows={3} maxLength={500} {...register("description")} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="slotIntervalMinutes">Intervalo (min)</Label>
-              <Select name="slotIntervalMinutes" defaultValue={String(initial?.slotIntervalMinutes ?? 30)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 min</SelectItem>
-                  <SelectItem value="30">30 min</SelectItem>
-                  <SelectItem value="60">60 min</SelectItem>
-                </SelectContent>
-              </Select>
-              <FieldError errors={fieldErrors?.slotIntervalMinutes} />
+              <Controller
+                control={control}
+                name="slotIntervalMinutes"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">15 min</SelectItem>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="60">60 min</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {(errors.slotIntervalMinutes || fieldErrors.slotIntervalMinutes) && (
+                <p className="text-sm text-destructive">
+                  {errors.slotIntervalMinutes?.message ?? fieldErrors.slotIntervalMinutes?.[0]}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="minNoticeMinutes">Antecedência (min)</Label>
               <Input
                 id="minNoticeMinutes"
-                name="minNoticeMinutes"
                 type="number"
-                defaultValue={String(initial?.minNoticeMinutes ?? 120)}
                 min={0}
                 max={10080}
-                required
+                {...register("minNoticeMinutes", { valueAsNumber: true })}
               />
-              <FieldError errors={fieldErrors?.minNoticeMinutes} />
+              {(errors.minNoticeMinutes || fieldErrors.minNoticeMinutes) && (
+                <p className="text-sm text-destructive">
+                  {errors.minNoticeMinutes?.message ?? fieldErrors.minNoticeMinutes?.[0]}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="bookingWindowDays">Janela futura (dias)</Label>
               <Input
                 id="bookingWindowDays"
-                name="bookingWindowDays"
                 type="number"
-                defaultValue={String(initial?.bookingWindowDays ?? 60)}
                 min={1}
                 max={180}
-                required
+                {...register("bookingWindowDays", { valueAsNumber: true })}
               />
-              <FieldError errors={fieldErrors?.bookingWindowDays} />
+              {(errors.bookingWindowDays || fieldErrors.bookingWindowDays) && (
+                <p className="text-sm text-destructive">
+                  {errors.bookingWindowDays?.message ?? fieldErrors.bookingWindowDays?.[0]}
+                </p>
+              )}
             </div>
           </div>
 
