@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+import {
+  bookingSchema,
+  businessSchema,
+  loginSchema,
+  serviceSchema,
+  signupSchema,
+} from "@/lib/validation/schemas";
+
+describe("businessSchema", () => {
+  const valid = {
+    name: "Barbearia Demo",
+    slug: "barbearia-demo",
+    phone: "+5511999999999",
+    timezone: "America/Sao_Paulo",
+    slotIntervalMinutes: 30,
+    minNoticeMinutes: 120,
+    bookingWindowDays: 60,
+  };
+
+  it("accepts a valid business", () => {
+    expect(businessSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects an invalid slug (uppercase)", () => {
+    expect(businessSchema.safeParse({ ...valid, slug: "Barbearia" }).success).toBe(false);
+  });
+
+  it("rejects a reserved pattern slug (double hyphen)", () => {
+    expect(businessSchema.safeParse({ ...valid, slug: "a--b" }).success).toBe(false);
+  });
+
+  it("rejects non-allowed slot interval", () => {
+    expect(businessSchema.safeParse({ ...valid, slotIntervalMinutes: 45 }).success).toBe(false);
+  });
+});
+
+describe("serviceSchema", () => {
+  const valid = { name: "Corte", durationMinutes: 30, priceCents: 4000 };
+
+  it("accepts a valid service", () => {
+    expect(serviceSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts a free service (price 0)", () => {
+    expect(serviceSchema.safeParse({ ...valid, priceCents: 0 }).success).toBe(true);
+  });
+
+  it("rejects negative price", () => {
+    expect(serviceSchema.safeParse({ ...valid, priceCents: -1 }).success).toBe(false);
+  });
+
+  it("rejects a too-long duration", () => {
+    expect(serviceSchema.safeParse({ ...valid, durationMinutes: 500 }).success).toBe(false);
+  });
+});
+
+describe("loginSchema", () => {
+  it("accepts valid credentials", () => {
+    expect(loginSchema.safeParse({ email: "a@b.com", password: "12345678" }).success).toBe(true);
+  });
+
+  it("rejects an invalid email", () => {
+    expect(loginSchema.safeParse({ email: "not-an-email", password: "12345678" }).success).toBe(false);
+  });
+
+  it("rejects an empty password", () => {
+    expect(loginSchema.safeParse({ email: "a@b.com", password: "" }).success).toBe(false);
+  });
+});
+
+describe("signupSchema", () => {
+  it("requires a strong password", () => {
+    expect(
+      signupSchema.safeParse({ displayName: "João", email: "a@b.com", password: "short" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts valid signup", () => {
+    expect(
+      signupSchema.safeParse({ displayName: "João", email: "a@b.com", password: "12345678" }).success,
+    ).toBe(true);
+  });
+});
+
+describe("bookingSchema", () => {
+  const valid = {
+    serviceId: "00000000-0000-0000-0000-000000000000",
+    startAt: "2026-09-10T12:00:00.000Z",
+    customerName: "Maria",
+    customerPhone: "+5511988888888",
+  };
+
+  it("accepts a valid booking", () => {
+    expect(bookingSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects a non-uuid service id", () => {
+    expect(bookingSchema.safeParse({ ...valid, serviceId: "x" }).success).toBe(false);
+  });
+
+  it("rejects an invalid startAt datetime", () => {
+    expect(bookingSchema.safeParse({ ...valid, startAt: "not-a-date" }).success).toBe(false);
+  });
+
+  it("accepts an empty optional email", () => {
+    expect(bookingSchema.safeParse({ ...valid, customerEmail: "" }).success).toBe(true);
+  });
+
+  it("rejects an invalid email", () => {
+    expect(bookingSchema.safeParse({ ...valid, customerEmail: "bad" }).success).toBe(false);
+  });
+});

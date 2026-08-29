@@ -3,16 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import { createClient } from "@/lib/supabase/server";
-
-type BookingStatus = "confirmed" | "completed" | "cancelled" | "no_show";
-
-// §11.2 Transitions permitted by the MVP.
-const ALLOWED_TRANSITIONS: Record<string, BookingStatus[]> = {
-  confirmed: ["completed", "cancelled", "no_show"],
-  completed: [],
-  cancelled: [],
-  no_show: [],
-};
+import { canTransition, type BookingStatus } from "@/lib/bookings/transitions";
 
 export async function updateBookingStatus(
   _prev: { ok: boolean; message?: string },
@@ -42,8 +33,7 @@ export async function updateBookingStatus(
   if (fetchError || !booking) return { ok: false, message: "Reserva não encontrada." };
 
   const current = booking.status as BookingStatus;
-  const allowed = ALLOWED_TRANSITIONS[current] ?? [];
-  if (!allowed.includes(nextStatus)) {
+  if (!canTransition(current, nextStatus)) {
     return { ok: false, message: `Não é possível mudar de "${current}" para "${nextStatus}".` };
   }
 
