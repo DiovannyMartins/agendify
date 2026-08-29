@@ -1,20 +1,40 @@
-import { Blocks } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentBusiness } from "@/lib/business/queries";
+import { BlockForm, BlockRow } from "./block-form";
 
-export default function BloqueiosPage() {
+export default async function BloqueiosPage() {
+  const business = await getCurrentBusiness();
+  const supabase = await createClient();
+  const { data: blocks } = await supabase
+    .from("availability_blocks")
+    .select("*")
+    .eq("business_id", business?.id ?? "")
+    .order("start_at", { ascending: false });
+
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold">Bloqueios</h1>
-      <p className="mt-1 text-muted-foreground">Em breve: bloqueios de agenda.</p>
-      <Card className="mt-8">
-        <CardHeader className="items-center text-center">
-          <Blocks className="size-8 text-muted-foreground" />
-          <CardTitle className="mt-3">Nenhum bloqueio</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center text-muted-foreground">
-          Bloqueie períodos para pausas, férias e exceções.
-        </CardContent>
-      </Card>
+      <p className="mt-1 text-muted-foreground">
+        Bloqueie períodos para pausas, férias e exceções. Os horários bloqueados não aparecem para reserva.
+      </p>
+
+      <div className="mt-6 rounded-xl border border-border p-4">
+        <BlockForm />
+      </div>
+
+      {blocks && blocks.length > 0 && (
+        <div className="mt-6 space-y-2">
+          {blocks.map((block) => (
+            <BlockRow
+              key={block.id}
+              id={block.id}
+              startAt={block.start_at}
+              endAt={block.end_at}
+              reason={block.reason}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
