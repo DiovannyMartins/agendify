@@ -118,4 +118,9 @@ Ver documentação da [Vercel](https://vercel.com/docs). Configure as variáveis
 
 ## Estado
 
-MVP completo (Fases 1–8 da spec). Deploy e verificação de produção pendentes.
+MVP completo (Fases 1–9 da spec). 
+
+## Produção
+
+- **URL**: https://agendify-liart.vercel.app
+- **Supabase**: projeto `wgmmrpvrtgsxwdhtgfjy` (produção)
