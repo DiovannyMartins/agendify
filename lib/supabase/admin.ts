@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./database-types";
 
 // Server-only. Never exported to the browser and never prefixed with NEXT_PUBLIC_.
 // Used only by the server for the public booking flow and privileged operations.
@@ -7,7 +8,7 @@ export function createAdminClient() {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required in production (server-only).");
   }
 
-  return createSupabaseClient(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
