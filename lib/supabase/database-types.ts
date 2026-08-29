@@ -372,6 +372,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_booking_by_public_code: {
+        Args: { p_code: string }
+        Returns: {
+          business_name: string
+          business_phone: string
+          business_slug: string
+          end_at: string
+          service_name: string
+          start_at: string
+        }[]
+      }
     }
     Enums: {
       booking_status: "confirmed" | "completed" | "cancelled" | "no_show"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,9 +39,9 @@ export function LoginForm() {
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          <a href="/recuperar-senha" className="hover:underline">
+          <Link href="/recuperar-senha" className="hover:underline">
             Esqueceu a senha?
-          </a>
+          </Link>
         </p>
       </CardContent>
     </Card>

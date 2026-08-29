@@ -1,0 +1,227 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { createBooking } from "@/lib/booking/actions";
+import { getSlotsForDate } from "@/lib/availability/actions";
+import { cn } from "@/lib/utils";
+
+type ServiceOption = {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  priceCents: number;
+};
+
+export function BookingWidget({
+  businessId,
+  slug,
+  services,
+}: {
+  businessId: string;
+  slug: string;
+  services: ServiceOption[];
+}) {
+  const router = useRouter();
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [date, setDate] = useState("");
+  const [slots, setSlots] = useState<string[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [isPending, startTransition] = useTransition();
+
+  const service = services.find((s) => s.id === serviceId);
+
+  const minDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  function handleServiceChange(value: string) {
+    setServiceId(value);
+    setSelectedSlot(null);
+    setSlots([]);
+  }
+
+  function handleDateChange(value: string) {
+    setDate(value);
+    setSelectedSlot(null);
+    setSlots([]);
+    if (value && serviceId) {
+      startTransition(() => {
+        getSlotsForDate(businessId, serviceId, value).then((res) =>
+          setSlots(res.available ?? []),
+        );
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (!serviceId || !date) return;
+    let cancelled = false;
+    startTransition(() => {
+      getSlotsForDate(businessId, serviceId, date).then((res) => {
+        if (!cancelled) setSlots(res.available ?? []);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, date, businessId]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!slot) {
+      setError("Escolha um horário.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    const result = await createBooking({
+      slug,
+      serviceId,
+      date,
+      startTime: slot,
+      customerName,
+      customerPhone,
+      customerEmail: customerEmail || undefined,
+      customerNote: customerNote || undefined,
+    });
+    setSubmitting(false);
+    if (result.ok && result.publicCode) {
+      router.push(`/${slug}/confirmacao?code=${result.publicCode}`);
+    } else {
+      setError(result.message ?? "Não foi possível concluir a reserva.");
+      setSelectedSlot(null);
+    }
+  }
+
+  const slot = selectedSlot;
+
+  return (
+    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-background p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="service">Escolha o serviço</Label>
+          <select
+            id="service"
+            value={serviceId}
+            onChange={(e) => handleServiceChange(e.target.value)}
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3"
+          >
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} · {s.durationMinutes} min · R$ {(s.priceCents / 100).toFixed(2).replace(".", ",")}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="date">Escolha a data</Label>
+          <Input
+            id="date"
+            type="date"
+            value={date}
+            min={minDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Horários disponíveis</Label>
+          {!date ? (
+            <p className="text-sm text-muted-foreground">Selecione uma data para ver os horários.</p>
+          ) : isPending ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner className="size-4" /> Carregando...
+            </div>
+          ) : slots.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum horário disponível nesta data. Escolha outra.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {slots.map((time) => (
+                <button
+                  key={time}
+                  type="button"
+                  onClick={() => setSelectedSlot(time)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                    slot === time
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:border-primary/60",
+                  )}
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+          )}
+          {slot && service && (
+            <p className="text-xs text-muted-foreground">
+              Horário selecionado: {date} às {slot} ({service.name})
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="customerName">Nome</Label>
+            <Input
+              id="customerName"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="customerPhone">Telefone / WhatsApp</Label>
+            <Input
+              id="customerPhone"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="customerEmail">E-mail (opcional)</Label>
+            <Input
+              id="customerEmail"
+              type="email"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="customerNote">Observação (opcional)</Label>
+          <Input
+            id="customerNote"
+            value={customerNote}
+            onChange={(e) => setCustomerNote(e.target.value)}
+            maxLength={500}
+          />
+        </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <Button type="submit" className="w-full" disabled={submitting || !slot}>
+          {submitting ? "Confirmando..." : "Confirmar reserva"}
+        </Button>
+      </form>
+    </div>
+  );
+}

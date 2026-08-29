@@ -10,7 +10,7 @@ export default async function DashboardHome() {
   const business = await getCurrentBusiness();
   if (!business) redirect("/dashboard/setup");
 
-  const publicUrl = `/s/${business.slug}`;
+  const publicUrl = `/${business.slug}`;
 
   return (
     <div className="mx-auto max-w-5xl">
