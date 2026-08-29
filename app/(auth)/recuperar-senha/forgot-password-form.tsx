@@ -16,6 +16,7 @@ type Values = z.infer<typeof schema>;
 
 export function ForgotPasswordForm() {
   const [state, setState] = useState<ActionResult>(INITIAL);
+  const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const {
     register,
@@ -23,14 +24,16 @@ export function ForgotPasswordForm() {
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(schema) });
 
-  const done = state.ok;
+  const done = submitted && state.ok;
   const serverError = state.ok ? "" : state.message;
 
   function onSubmit(values: Values) {
     startTransition(async () => {
       const fd = new FormData();
       fd.set("email", values.email);
-      setState(await requestPasswordReset(INITIAL, fd));
+      const result = await requestPasswordReset(INITIAL, fd);
+      setState(result);
+      setSubmitted(true);
     });
   }
 

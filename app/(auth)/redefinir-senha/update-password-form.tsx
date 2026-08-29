@@ -19,6 +19,7 @@ type Values = z.infer<typeof schema>;
 export function UpdatePasswordForm() {
   const router = useRouter();
   const [state, setState] = useState<ActionResult>(INITIAL);
+  const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const {
     register,
@@ -26,7 +27,7 @@ export function UpdatePasswordForm() {
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(schema) });
 
-  const done = state.ok;
+  const done = submitted && state.ok;
 
   useEffect(() => {
     if (done) {
@@ -39,7 +40,9 @@ export function UpdatePasswordForm() {
     startTransition(async () => {
       const fd = new FormData();
       fd.set("password", values.password);
-      setState(await updatePassword(INITIAL, fd));
+      const result = await updatePassword(INITIAL, fd);
+      setState(result);
+      setSubmitted(true);
     });
   }
 

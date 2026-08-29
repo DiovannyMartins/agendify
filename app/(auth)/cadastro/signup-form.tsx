@@ -13,6 +13,7 @@ const INITIAL: ActionResult = { ok: true, data: undefined };
 
 export function SignupForm() {
   const [state, setState] = useState<ActionResult>(INITIAL);
+  const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const {
     register,
@@ -28,10 +29,11 @@ export function SignupForm() {
       fd.set("password", values.password);
       const result = await signup(INITIAL, fd);
       setState(result);
+      setSubmitted(true);
     });
   }
 
-  const done = state.ok;
+  const done = submitted && state.ok;
   const error = state.ok ? "" : state.message;
 
   return (
