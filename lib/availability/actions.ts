@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { availabilitySchema } from "@/lib/validation/schemas";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import type { ActionResult } from "@/lib/business/actions";
@@ -136,14 +137,16 @@ export async function getSlotsForDate(
   serviceId: string,
   date: string,
 ): Promise<{ available: string[]; error?: string }> {
-  const supabase = await createClient();
+  // Public booking flow reads blocks and bookings of any business; anonymous RLS
+  // would block that, so we use the server-only admin client for these reads.
+  const supabase = createAdminClient();
   const { data: business } = await supabase
     .from("businesses")
     .select("*")
     .eq("id", businessId)
     .single();
 
-  if (!business) return { available: [], error: "not_found" };
+  if (!business || !business.is_active) return { available: [], error: "not_found" };
 
   const { data: service } = await supabase
     .from("services")

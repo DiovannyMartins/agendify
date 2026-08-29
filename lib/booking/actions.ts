@@ -1,14 +1,13 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
 import { bookingSchema } from "@/lib/validation/schemas";
 import { computeAvailableSlots, overlaps, type SlotInterval } from "@/lib/booking/availability";
 import type { TimeRange } from "@/lib/booking/availability";
 
 export type ActionResult = { ok: boolean; code?: string; message?: string; publicCode?: string };
 
-type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+type ServerClient = ReturnType<typeof createAdminClient>;
 
 export async function createBooking(input: {
   slug: string;
@@ -20,7 +19,9 @@ export async function createBooking(input: {
   customerEmail?: string;
   customerNote?: string;
 }): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient();
+  // Server-authoritative flow: the admin client reads blocks/bookings of any
+  // business (anonymous RLS would block those reads) for revalidation.
+  const supabase = createAdminClient();
 
   const { data: business } = await supabase
     .from("businesses")

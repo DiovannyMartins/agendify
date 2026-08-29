@@ -18,7 +18,7 @@ export function adminClient(): SupabaseClient<Database> {
 // exercise RLS as a real authenticated user.
 export async function anonClientForUser(email: string, password: string) {
   const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE);
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  const { error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return client;
 }

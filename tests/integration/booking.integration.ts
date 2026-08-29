@@ -58,7 +58,7 @@ beforeAll(async () => {
     })
     .select("*")
     .single();
-  serviceId = svc.id;
+  serviceId = svc!.id;
 
   // A second user for RLS tests.
   const { data: user2 } = await admin.auth.admin.createUser({
@@ -88,11 +88,11 @@ describe("createBooking RPC (§11.4)", () => {
     });
     expect(error).toBeNull();
     expect(data).not.toBeNull();
-    expect(data.status).toBe("confirmed");
-    expect(data.service_name_snapshot).toBe("Corte");
+    expect(data!.status).toBe("confirmed");
+    expect(data!.service_name_snapshot).toBe("Corte");
     // Updating the service must NOT change existing snapshot.
     await admin.from("services").update({ name: "Corte VIP" }).eq("id", serviceId);
-    const { data: fresh } = await admin.rpc("get_booking_by_public_code", { p_code: data.public_code });
+    const { data: fresh } = await admin.rpc("get_booking_by_public_code", { p_code: data!.public_code });
     expect(fresh?.[0]?.service_name).toBe("Corte");
   });
 
@@ -118,10 +118,18 @@ describe("RLS (§13.2)", () => {
     expect(Array.isArray(data)).toBe(true);
   });
 
-  it("a foreign user cannot read the owner's business", async () => {
+  it("an outsider CAN read the public business profile (sec 13.1) but cannot read its bookings", async () => {
     const outsider = await anonClientForUser(OTHER_EMAIL, PASSWORD);
-    const { data } = await outsider.from("businesses").select("*").eq("id", businessId).maybeSingle();
-    expect(data).toBeNull();
+    // Public business profile is readable via the public policy.
+    const { data: biz } = await outsider
+      .from("businesses")
+      .select("id, name, slug, is_active")
+      .eq("id", businessId)
+      .maybeSingle();
+    expect(biz?.id).toBe(businessId);
+    // But the outsider cannot read the owner's bookings (private data).
+    const { data: rows } = await outsider.from("bookings").select("*").eq("business_id", businessId);
+    expect(rows?.length ?? 0).toBe(0);
   });
 });
 
@@ -134,6 +142,6 @@ describe("block vs future booking conflict (§9.4)", () => {
       .eq("business_id", businessId)
       .gt("start_at", "2099-01-01T00:00:00.000Z");
     // Confirm there is at least an active booking to conflict with.
-    expect(conflict.length).toBeGreaterThan(0);
+    expect(conflict!.length).toBeGreaterThan(0);
   });
 });
