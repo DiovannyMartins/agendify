@@ -67,11 +67,23 @@ export const serviceFormSchema = z.object({
 });
 export type ServiceFormValues = z.infer<typeof serviceFormSchema>;
 
-export const availabilitySchema = z.object({
-  weekday: z.number().int().min(0).max(6),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/),
-});
+export const availabilitySchema = z
+  .object({
+    weekday: z.number().int().min(0).max(6),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  })
+  .superRefine((val, ctx) => {
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    // §8.5/§9.3: a faixa must end after it starts and must not cross midnight.
+    if (toMin(val.startTime) >= toMin(val.endTime)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endTime"],
+        message: "O fim deve ser depois do início e a faixa não pode atravessar a meia-noite.",
+      });
+    }
+  });
 export type AvailabilityInput = z.infer<typeof availabilitySchema>;
 
 export const blockSchema = z.object({

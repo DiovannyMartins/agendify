@@ -75,6 +75,7 @@ test("public booking flow: reserve, confirm in dashboard, release on cancel", as
 
   await page.getByLabel("Nome").fill("Cliente E2E");
   await page.getByLabel("Telefone / WhatsApp").fill("+5511977777777");
+  await page.getByRole("checkbox", { name: /Autorizo o tratamento dos meus dados/ }).check();
   await page.getByRole("button", { name: "Confirmar reserva" }).click();
 
   // 2. Confirmation screen (no personal data beyond service/date/business contact).

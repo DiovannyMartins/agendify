@@ -4,12 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation/schemas";
 import {
   computeAvailableSlots,
-  overlaps,
   localDayRangeUtc,
+  weekdayOf,
   zonedTimeToUtc,
   type SlotInterval,
+  type UtcRange,
 } from "@/lib/booking/availability";
-import type { TimeRange } from "@/lib/booking/availability";
 
 export type ActionResult = { ok: boolean; code?: string; message?: string; publicCode?: string };
 
@@ -69,19 +69,11 @@ export async function createBooking(input: {
     return { ok: false, code: "service_not_found", message: "Serviço indisponível." };
   }
 
-  // Server-side revalidation of availability (§11.3 step 5).
+  // Server-side revalidation of availability (§11.3 step 5). `getSlotRange`
+  // returns null only when the day has no active availability range.
   const slotRange = await getSlotRange(supabase, business.id, input.date, business.timezone);
   if (slotRange === null) {
-    return { ok: false, code: "slot_taken", message: "Este horário não está mais disponível. Escolha outro." };
-  }
-  const candidate: TimeRange = {
-    start: input.startTime,
-    end: addMinutes(input.startTime, service.duration_minutes),
-  };
-  const overlapsBlocks = slotRange.blocks.some((b) => overlaps(candidate, b));
-  const overlapsBooking = slotRange.occupancies.some((o) => overlaps(candidate, o));
-  if (overlapsBlocks || overlapsBooking) {
-    return { ok: false, code: "slot_taken", message: "Esse horário acabou de ser reservado. Escolha outro." };
+    return { ok: false, code: "no_availability", message: "Este dia não possui horários disponíveis. Escolha outra data." };
   }
 
   const rules = {
@@ -128,8 +120,8 @@ export async function createBooking(input: {
 
 type SlotRange = {
   intervals: SlotInterval[];
-  blocks: TimeRange[];
-  occupancies: TimeRange[];
+  blocks: UtcRange[];
+  occupancies: UtcRange[];
 };
 
 async function getSlotRange(
@@ -150,52 +142,27 @@ async function getSlotRange(
   if (!intervals || intervals.length === 0) return null;
 
   const day = localDayRangeUtc(date, timezone);
-  const dayStart = day.start;
-  const dayEnd = day.end;
 
   const [{ data: blocks }, { data: bookings }] = await Promise.all([
     supabase
       .from("availability_blocks")
       .select("start_at, end_at")
       .eq("business_id", businessId)
-      .lt("start_at", dayEnd)
-      .gt("end_at", dayStart),
+      .lt("start_at", day.end)
+      .gt("end_at", day.start),
     supabase
       .from("bookings")
       .select("start_at, end_at")
       .eq("business_id", businessId)
       .neq("status", "cancelled")
-      .lt("start_at", dayEnd)
-      .gt("end_at", dayStart),
+      .lt("start_at", day.end)
+      .gt("end_at", day.start),
   ]);
-
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 
   return {
     intervals: intervals.map((i) => ({ startTime: i.start_time, endTime: i.end_time })),
-    blocks: (blocks ?? []).map((b) => ({ start: fmt.format(new Date(b.start_at)), end: fmt.format(new Date(b.end_at)) })),
-    occupancies: (bookings ?? []).map((b) => ({ start: fmt.format(new Date(b.start_at)), end: fmt.format(new Date(b.end_at)) })),
+    blocks: (blocks ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() })),
+    occupancies: (bookings ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() })),
   };
 }
 
-function weekdayOf(date: string, timezone: string): number {
-  const short = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(
-    new Date(`${date}T12:00:00Z`),
-  );
-  const map: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-  };
-  return map[short] ?? 0;
-}
-
-function addMinutes(time: string, minutes: number): string {
-  const t = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) + minutes;
-  const h = Math.floor(t / 60) % 24;
-  const m = t % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}

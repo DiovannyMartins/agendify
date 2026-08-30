@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  availabilitySchema,
   bookingSchema,
   businessSchema,
   loginSchema,
@@ -109,5 +110,21 @@ describe("bookingSchema", () => {
 
   it("rejects an invalid email", () => {
     expect(bookingSchema.safeParse({ ...valid, customerEmail: "bad" }).success).toBe(false);
+  });
+});
+
+describe("availabilitySchema (§8.5 faixas)", () => {
+  const valid = { weekday: 1, startTime: "08:00", endTime: "18:00" };
+
+  it("accepts a valid same-day faixa", () => {
+    expect(availabilitySchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects a faixa whose end is before its start (midnight-crossing)", () => {
+    expect(availabilitySchema.safeParse({ ...valid, startTime: "22:00", endTime: "02:00" }).success).toBe(false);
+  });
+
+  it("rejects a zero-length faixa", () => {
+    expect(availabilitySchema.safeParse({ ...valid, startTime: "09:00", endTime: "09:00" }).success).toBe(false);
   });
 });

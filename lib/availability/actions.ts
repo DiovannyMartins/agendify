@@ -6,8 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { availabilitySchema } from "@/lib/validation/schemas";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import type { ActionResult } from "@/lib/business/actions";
-import { computeAvailableSlots, localDayRangeUtc, overlaps } from "@/lib/booking/availability";
-import type { TimeRange } from "@/lib/booking/availability";
+import { computeAvailableSlots, localDayRangeUtc, overlaps, weekdayOf } from "@/lib/booking/availability";
+import type { UtcRange } from "@/lib/booking/availability";
 
 export type { ActionResult };
 
@@ -165,17 +165,7 @@ export async function getSlotsForDate(
   };
 
   // §10.2: interpret "now" and the requested date in the business timezone.
-  const weekday = Number(
-    new Intl.DateTimeFormat("en-US", { timeZone: business.timezone, weekday: "short" })
-      .format(new Date(date + "T12:00:00Z"))
-      .replace(/Sun/g, "0")
-      .replace(/Mon/g, "1")
-      .replace(/Tue/g, "2")
-      .replace(/Wed/g, "3")
-      .replace(/Thu/g, "4")
-      .replace(/Fri/g, "5")
-      .replace(/Sat/g, "6"),
-  );
+  const weekday = weekdayOf(date, business.timezone);
 
   const { data: intervals } = await supabase
     .from("availability")
@@ -202,24 +192,11 @@ export async function getSlotsForDate(
       .gt("end_at", day.start),
   ]);
 
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: business.timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  // Blocks/bookings are read in UTC; computeAvailableSlots resolves each local
+  // candidate to UTC before overlap checking (fixes midnight-crossing blocks).
+  const occupancies: UtcRange[] = (bookings ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() }));
 
-  // Convert booking times (UTC timestamps) into local HH:MM for candidates.
-  const occupancies = (bookings ?? []).map((b) => {
-    const start = fmt.format(new Date(b.start_at));
-    const end = fmt.format(new Date(b.end_at));
-    return { start, end };
-  });
-
-  const blockRanges: TimeRange[] = (blocks ?? []).map((b) => ({
-    start: fmt.format(new Date(b.start_at)),
-    end: fmt.format(new Date(b.end_at)),
-  }));
+  const blockRanges: UtcRange[] = (blocks ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() }));
 
   const available = computeAvailableSlots({
     intervals: (intervals ?? []).map((i) => ({ startTime: i.start_time, endTime: i.end_time })),

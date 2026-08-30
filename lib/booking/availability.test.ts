@@ -69,15 +69,19 @@ describe("computeAvailableSlots", () => {
     bookingWindowDays: 60,
   };
 
+  const now = new Date("2026-09-10T00:00:00Z");
+  const utc = (time: string, d = "2026-09-10") => zonedTimeToUtcMs(d, time, rules.timezone);
+  const r = (start: number, end: number) => ({ startMs: start, endMs: end });
+
   it("excludes a slot overlapping an existing booking", () => {
     const slots = computeAvailableSlots({
       intervals: [{ startTime: "08:00", endTime: "12:00" }],
       rules,
       durationMinutes: 45,
       date: "2026-09-10",
-      now: new Date("2026-09-10T00:00:00Z"),
+      now,
       blocks: [],
-      occupancies: [{ start: "09:00", end: "09:45" }],
+      occupancies: [r(utc("09:00"), utc("09:45"))],
     });
     expect(slots).toContain("08:00");
     expect(slots).not.toContain("09:00");
@@ -91,12 +95,31 @@ describe("computeAvailableSlots", () => {
       rules,
       durationMinutes: 30,
       date: "2026-09-10",
-      now: new Date("2026-09-10T00:00:00Z"),
-      blocks: [{ start: "10:00", end: "11:00" }],
+      now,
+      blocks: [r(utc("10:00"), utc("11:00"))],
       occupancies: [],
     });
     expect(slots).not.toContain("10:00");
     expect(slots).not.toContain("10:30");
+    expect(slots).toContain("08:00");
+  });
+
+  it("excludes slots against a block that crosses midnight", () => {
+    // Block 20:00 local (09-09) -> 06:00 local (09-10): must block the 09-10 00:00-06:00
+    // window while leaving 06:00+ free.
+    const slots = computeAvailableSlots({
+      intervals: [{ startTime: "00:00", endTime: "10:00" }],
+      rules,
+      durationMinutes: 30,
+      date: "2026-09-10",
+      now,
+      blocks: [r(utc("20:00", "2026-09-09"), utc("06:00"))],
+      occupancies: [],
+    });
+    expect(slots).not.toContain("00:00");
+    expect(slots).not.toContain("03:30");
+    expect(slots).not.toContain("05:30");
+    expect(slots).toContain("06:00");
     expect(slots).toContain("08:00");
   });
 
@@ -106,7 +129,7 @@ describe("computeAvailableSlots", () => {
       rules,
       durationMinutes: 30,
       date: "2026-09-10",
-      now: new Date("2026-09-10T00:00:00Z"),
+      now,
       blocks: [],
       occupancies: [],
     });

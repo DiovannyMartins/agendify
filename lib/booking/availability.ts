@@ -5,6 +5,11 @@ export interface SlotInterval {
 
 export type TimeRange = { start: string; end: string };
 
+// A UTC range. We keep the epoch-millisecond form internally so comparisons are
+// timezone/format-agnostic (timestamptz may arrive as "+00:00" or "Z"), and the
+// component builds/serialises it only when talking to the DB.
+export type UtcRange = { startMs: number; endMs: number };
+
 export interface BusinessRules {
   timezone: string;
   slotIntervalMinutes: number;
@@ -12,12 +17,13 @@ export interface BusinessRules {
   bookingWindowDays: number;
 }
 
-export interface BookingOccupancy extends TimeRange {
-  id?: string;
-}
-
 export function overlaps(a: TimeRange, b: TimeRange): boolean {
   return a.start < b.end && a.end > b.start;
+}
+
+// Half-open interval overlap in UTC (epoch ms). See §10.3.
+export function overlapsUtc(a: UtcRange, b: UtcRange): boolean {
+  return a.startMs < b.endMs && a.endMs > b.startMs;
 }
 
 export function minutesToTime(totalMinutes: number): string {
@@ -117,6 +123,17 @@ export function localDayRangeUtc(date: string, timezone: string): { start: strin
   return { start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() };
 }
 
+// Weekday of a business-local date (ISO yyyy-mm-dd), as 0=Sun..6=Sat.
+export function weekdayOf(date: string, timezone: string): number {
+  const short = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(
+    new Date(`${date}T12:00:00Z`),
+  );
+  const map: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  return map[short] ?? 0;
+}
+
 export function isValidSlot(date: string, start: string, now: Date, rules: BusinessRules): boolean {
   // Convert the business-local date+time to its real UTC instant, then measure
   // the notice against "now" on the same UTC timeline.
@@ -125,18 +142,14 @@ export function isValidSlot(date: string, start: string, now: Date, rules: Busin
   return slotInstant - now.getTime() >= noticeMs;
 }
 
-export function isOccupied(candidate: TimeRange, occupancies: BookingOccupancy[]): boolean {
-  return occupancies.some((o) => overlaps(candidate, o));
-}
-
 export function computeAvailableSlots(params: {
   intervals: SlotInterval[];
   rules: BusinessRules;
   durationMinutes: number;
   date: string;
   now: Date;
-  blocks: TimeRange[];
-  occupancies: BookingOccupancy[];
+  blocks: UtcRange[];
+  occupancies: UtcRange[];
 }): string[] {
   const { intervals, rules, durationMinutes, date, now, blocks, occupancies } = params;
 
@@ -146,10 +159,14 @@ export function computeAvailableSlots(params: {
   for (const interval of intervals) {
     const starts = generateSlotStartTimes(interval, rules.slotIntervalMinutes, durationMinutes);
     for (const start of starts) {
-      const end = minutesToTime(timeToMinutes(start) + durationMinutes);
-      const candidate = { start, end };
-      if (blocks.some((b) => overlaps(candidate, b))) continue;
-      if (isOccupied(candidate, occupancies)) continue;
+      // Build the candidate in UTC (business-local slot -> UTC), per §9.5/§10.3.
+      const startMs = zonedTimeToUtcMs(date, start, rules.timezone);
+      const candidateUtc: UtcRange = {
+        startMs,
+        endMs: startMs + durationMinutes * 60_000,
+      };
+      if (blocks.some((b) => overlapsUtc(candidateUtc, b))) continue;
+      if (occupancies.some((o) => overlapsUtc(candidateUtc, o))) continue;
       if (!isValidSlot(date, start, now, rules)) continue;
       available.push(start);
     }
