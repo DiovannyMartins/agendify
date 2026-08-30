@@ -35,6 +35,7 @@ next-env.d.ts
 /coverage
 /test-results/
 /playwright-report/
+/.playwright-mcp/
 
 # supabase cli
 /supabase/.temp/
