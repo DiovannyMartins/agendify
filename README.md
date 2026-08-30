@@ -78,7 +78,8 @@ Copie `.env.example` para `.env.local` e preencha:
 | `NEXT_PUBLIC_SUPABASE_URL` | Client/Server | URL do projeto Supabase |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Client/Server | Chave publishable (`sb_publishable_...`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Somente Server | Operações públicas controladas (`sb_secret_...`) |
-| `NEXT_PUBLIC_APP_URL` | Client/Server | URL base para redirects |
+| `APP_URL` | Somente Server | URL base para redirects de e-mail (preferido) |
+| `NEXT_PUBLIC_APP_URL` | Client/Server | Fallback; use `APP_URL` no servidor |
 
 > A service role **nunca** deve aparecer no bundle do navegador, em variável `NEXT_PUBLIC_`, no repositório Git ou em logs públicos.
 

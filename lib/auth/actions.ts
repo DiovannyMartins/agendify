@@ -79,7 +79,7 @@ export async function logout() {
 export async function requestPasswordReset(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const origin = process.env.NEXT_PUBLIC_APP_URL;
+  const origin = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
 
   if (!email) {
     return { ok: false, code: "VALIDATION", message: "Informe seu e-mail.", fieldErrors: {} };
