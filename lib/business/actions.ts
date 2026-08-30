@@ -8,7 +8,9 @@ export type ActionResult<T = undefined> =
   | { ok: true; data: T }
   | { ok: false; code: string; message: string; fieldErrors?: Record<string, string[]> };
 
-export const RESERVED_SLUGS = [
+// §9.1 reserved slugs. Kept module-internal (not exported) because a "use server"
+// file may only export async functions.
+const RESERVED_SLUGS = [
   "login",
   "cadastro",
   "dashboard",
