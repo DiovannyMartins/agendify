@@ -10,7 +10,8 @@ returns table (
   end_at timestamptz,
   business_name text,
   business_slug text,
-  business_phone text
+  business_phone text,
+  business_timezone text
 )
 language sql
 security definer
@@ -22,7 +23,8 @@ as $$
     b.end_at,
     bus.name,
     bus.slug,
-    bus.phone
+    bus.phone,
+    bus.timezone
   from public.bookings b
   join public.businesses bus on bus.id = b.business_id
   where b.public_code = p_code

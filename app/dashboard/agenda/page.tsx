@@ -13,11 +13,11 @@ const STATUS_LABEL: Record<string, { label: string; variant: "default" | "second
   no_show: { label: "No-show", variant: "outline" },
 };
 
-function formatBookingTime(iso: string): string {
+function formatBookingTime(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-    timeZone: "UTC",
+    timeZone: tz,
   }).format(new Date(iso));
 }
 
@@ -104,7 +104,7 @@ export default async function AgendaPage() {
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {formatBookingTime(booking.start_at)} · {booking.duration_minutes_snapshot} min
+                      {formatBookingTime(booking.start_at, business.timezone)} · {booking.duration_minutes_snapshot} min
                     </p>
                     <p className="mt-1 text-sm">
                       {booking.customer_name_snapshot} · {booking.customer_phone_snapshot}

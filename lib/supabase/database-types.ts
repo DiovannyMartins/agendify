@@ -378,6 +378,7 @@ export type Database = {
           business_name: string
           business_phone: string
           business_slug: string
+          business_timezone: string
           end_at: string
           service_name: string
           start_at: string

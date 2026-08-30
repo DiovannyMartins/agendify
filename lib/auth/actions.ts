@@ -67,7 +67,9 @@ export async function login(_prev: ActionResult, formData: FormData): Promise<Ac
     };
   }
 
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  // Only allow same-origin, non-protocol-relative paths to avoid open redirect.
+  const safeNext = next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/dashboard";
+  redirect(safeNext);
 }
 
 export async function logout() {

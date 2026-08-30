@@ -3,7 +3,11 @@ import {
   computeAvailableSlots,
   generateSlotStartTimes,
   isWithinWindow,
+  isValidSlot,
+  localDayRangeUtc,
   overlaps,
+  zonedTimeToUtc,
+  zonedTimeToUtcMs,
 } from "@/lib/booking/availability";
 import type { BusinessRules } from "@/lib/booking/availability";
 
@@ -107,5 +111,53 @@ describe("computeAvailableSlots", () => {
       occupancies: [],
     });
     expect(slots).toEqual([]);
+  });
+});
+
+describe("zonedTimeToUtc (§9.5 UTC conversion)", () => {
+  it("converts São Paulo wall-clock (UTC-3) to the correct UTC instant", () => {
+    expect(zonedTimeToUtc("2026-09-10", "12:00", "America/Sao_Paulo")).toBe("2026-09-10T15:00:00.000Z");
+  });
+
+  it("converts a positive-offset timezone correctly", () => {
+    expect(zonedTimeToUtc("2026-09-10", "12:00", "Europe/Lisbon")).toBe("2026-09-10T11:00:00.000Z");
+  });
+
+  it("zonedTimeToUtcMs agrees with zonedTimeToUtc", () => {
+    expect(new Date(zonedTimeToUtcMs("2026-09-10", "12:00", "America/Sao_Paulo")).toISOString()).toBe(
+      zonedTimeToUtc("2026-09-10", "12:00", "America/Sao_Paulo"),
+    );
+  });
+});
+
+describe("localDayRangeUtc (§10.2 business-local day window)", () => {
+  it("returns a 24h window spanning the business-local day in UTC", () => {
+    const { start, end } = localDayRangeUtc("2026-09-10", "America/Sao_Paulo");
+    // São Paulo is UTC-3: local midnight is 03:00Z that day, next local midnight is 03:00Z next day.
+    expect(start).toBe("2026-09-10T03:00:00.000Z");
+    expect(end).toBe("2026-09-11T03:00:00.000Z");
+  });
+});
+
+describe("isValidSlot min_notice (§10.2 step 8)", () => {
+  const rules: BusinessRules = {
+    timezone: "America/Sao_Paulo",
+    slotIntervalMinutes: 30,
+    minNoticeMinutes: 120,
+    bookingWindowDays: 60,
+  };
+
+  it("accepts a slot at least minNotice away using the real UTC instant", () => {
+    const now = new Date("2026-09-10T12:00:00.000Z");
+    // Local 15:00 = UTC 18:00, exactly 6h after now -> within 120min notice.
+    expect(isValidSlot("2026-09-10", "15:00", now, rules)).toBe(true);
+  });
+
+  it("rejects a slot within minNotice even if local wall-clock suggests otherwise", () => {
+    const now = new Date("2026-09-10T12:00:00.000Z");
+    // Local 12:00 = UTC 15:00, 3h after now -> within notice (180min > 120min) -> true.
+    expect(isValidSlot("2026-09-10", "12:00", now, rules)).toBe(true);
+    // Local 09:00 = UTC 12:00, right at now -> too soon.
+    expect(isValidSlot("2026-09-10", "09:00", now, rules)).toBe(false);
   });
 });

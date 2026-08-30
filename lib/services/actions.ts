@@ -16,11 +16,12 @@ type ServicePayload = {
 };
 
 function parseService(formData: FormData): ServicePayload {
+  const price = String(formData.get("price") ?? "").trim();
   return {
     name: String(formData.get("name") ?? ""),
     description: String(formData.get("description") ?? "") || null,
     durationMinutes: Number(formData.get("durationMinutes") ?? 0),
-    priceCents: Math.round(Number(formData.get("priceCents") ?? 0) * 100),
+    priceCents: price ? Math.round(Number(price) * 100) : 0,
   };
 }
 
@@ -79,7 +80,7 @@ export async function updateService(
   if (!business) return { ok: false, code: "NO_BUSINESS", message: "Configure seu negócio primeiro." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { error, data: updated } = await supabase
     .from("services")
     .update({
       name: parsed.data.name,
@@ -88,10 +89,14 @@ export async function updateService(
       price_cents: parsed.data.priceCents,
     })
     .eq("id", id)
-    .eq("business_id", business.id);
+    .eq("business_id", business.id)
+    .select();
 
   if (error) {
     return { ok: false, code: "FORBIDDEN", message: "Você não pode editar este serviço." };
+  }
+  if (!updated || updated.length === 0) {
+    return { ok: false, code: "NOT_FOUND", message: "Serviço não encontrado." };
   }
   revalidatePath("/dashboard/servicos");
   return { ok: true, data: undefined };

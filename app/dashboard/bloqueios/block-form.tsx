@@ -40,17 +40,19 @@ export function BlockRow({
   startAt,
   endAt,
   reason,
+  timezone,
 }: {
   id: string;
   startAt: string;
   endAt: string;
   reason: string | null;
+  timezone: string;
 }) {
   const fmt = (iso: string) =>
     new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
       timeStyle: "short",
-      timeZone: "UTC",
+      timeZone: timezone,
     }).format(new Date(iso));
 
   return (

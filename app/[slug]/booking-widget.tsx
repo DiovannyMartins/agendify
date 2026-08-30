@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ export function BookingWidget({
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerNote, setCustomerNote] = useState("");
+  const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,9 +46,9 @@ export function BookingWidget({
   const service = services.find((s) => s.id === serviceId);
 
   const minDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    // Allow today; the server enforces min_notice and the future window, so a
+    // same-day calendar date is valid when the business permits it.
+    return new Date().toISOString().slice(0, 10);
   }, []);
 
   function handleServiceChange(value: string) {
@@ -85,6 +87,10 @@ export function BookingWidget({
     e.preventDefault();
     if (!slot) {
       setError("Escolha um horário.");
+      return;
+    }
+    if (!consent) {
+      setError("Confirme que você concorda com o tratamento dos dados (LGPD).");
       return;
     }
     setSubmitting(true);
@@ -218,7 +224,30 @@ export function BookingWidget({
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Button type="submit" className="w-full" disabled={submitting || !slot}>
+        <div className="space-y-2">
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              Autorizo o tratamento dos meus dados (nome, telefone e, se informado,
+              e-mail) para fins de agendamento, conforme a{" "}
+              <Link href="/privacidade" className="font-medium text-foreground underline">
+                Política de Privacidade
+              </Link>{" "}
+              e os{" "}
+              <Link href="/termos" className="font-medium text-foreground underline">
+                Termos de Uso
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
+
+        <Button type="submit" className="w-full" disabled={submitting || !slot || !consent}>
           {submitting ? "Confirmando..." : "Confirmar reserva"}
         </Button>
       </form>

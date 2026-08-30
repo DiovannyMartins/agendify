@@ -2,7 +2,13 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation/schemas";
-import { computeAvailableSlots, overlaps, type SlotInterval } from "@/lib/booking/availability";
+import {
+  computeAvailableSlots,
+  overlaps,
+  localDayRangeUtc,
+  zonedTimeToUtc,
+  type SlotInterval,
+} from "@/lib/booking/availability";
 import type { TimeRange } from "@/lib/booking/availability";
 
 export type ActionResult = { ok: boolean; code?: string; message?: string; publicCode?: string };
@@ -65,35 +71,36 @@ export async function createBooking(input: {
 
   // Server-side revalidation of availability (§11.3 step 5).
   const slotRange = await getSlotRange(supabase, business.id, input.date, business.timezone);
-  if (slotRange) {
-    const candidate: TimeRange = {
-      start: input.startTime,
-      end: addMinutes(input.startTime, service.duration_minutes),
-    };
-    const overlapsBlocks = slotRange.blocks.some((b) => overlaps(candidate, b));
-    const overlapsBooking = slotRange.occupancies.some((o) => overlaps(candidate, o));
-    if (overlapsBlocks || overlapsBooking) {
-      return { ok: false, code: "slot_taken", message: "Esse horário acabou de ser reservado. Escolha outro." };
-    }
+  if (slotRange === null) {
+    return { ok: false, code: "slot_taken", message: "Este horário não está mais disponível. Escolha outro." };
+  }
+  const candidate: TimeRange = {
+    start: input.startTime,
+    end: addMinutes(input.startTime, service.duration_minutes),
+  };
+  const overlapsBlocks = slotRange.blocks.some((b) => overlaps(candidate, b));
+  const overlapsBooking = slotRange.occupancies.some((o) => overlaps(candidate, o));
+  if (overlapsBlocks || overlapsBooking) {
+    return { ok: false, code: "slot_taken", message: "Esse horário acabou de ser reservado. Escolha outro." };
+  }
 
-    const rules = {
-      timezone: business.timezone,
-      slotIntervalMinutes: business.slot_interval_minutes,
-      minNoticeMinutes: business.min_notice_minutes,
-      bookingWindowDays: business.booking_window_days,
-    };
-    const available = computeAvailableSlots({
-      intervals: slotRange.intervals,
-      rules,
-      durationMinutes: service.duration_minutes,
-      date: input.date,
-      now: new Date(),
-      blocks: slotRange.blocks,
-      occupancies: slotRange.occupancies,
-    });
-    if (!available.includes(input.startTime)) {
-      return { ok: false, code: "slot_taken", message: "Esse horário não está mais disponível. Escolha outro." };
-    }
+  const rules = {
+    timezone: business.timezone,
+    slotIntervalMinutes: business.slot_interval_minutes,
+    minNoticeMinutes: business.min_notice_minutes,
+    bookingWindowDays: business.booking_window_days,
+  };
+  const available = computeAvailableSlots({
+    intervals: slotRange.intervals,
+    rules,
+    durationMinutes: service.duration_minutes,
+    date: input.date,
+    now: new Date(),
+    blocks: slotRange.blocks,
+    occupancies: slotRange.occupancies,
+  });
+  if (!available.includes(input.startTime)) {
+    return { ok: false, code: "slot_taken", message: "Esse horário não está mais disponível. Escolha outro." };
   }
 
   // Remote re-reads the service and enforces the overlap constraint (§11.4).
@@ -142,24 +149,24 @@ async function getSlotRange(
 
   if (!intervals || intervals.length === 0) return null;
 
-  const dayStart = new Date(`${date}T00:00:00Z`);
-  const dayEnd = new Date(`${date}T00:00:00Z`);
-  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+  const day = localDayRangeUtc(date, timezone);
+  const dayStart = day.start;
+  const dayEnd = day.end;
 
   const [{ data: blocks }, { data: bookings }] = await Promise.all([
     supabase
       .from("availability_blocks")
       .select("start_at, end_at")
       .eq("business_id", businessId)
-      .lt("start_at", dayEnd.toISOString())
-      .gt("end_at", dayStart.toISOString()),
+      .lt("start_at", dayEnd)
+      .gt("end_at", dayStart),
     supabase
       .from("bookings")
       .select("start_at, end_at")
       .eq("business_id", businessId)
       .neq("status", "cancelled")
-      .lt("start_at", dayEnd.toISOString())
-      .gt("end_at", dayStart.toISOString()),
+      .lt("start_at", dayEnd)
+      .gt("end_at", dayStart),
   ]);
 
   const fmt = new Intl.DateTimeFormat("en-GB", {
@@ -184,31 +191,6 @@ function weekdayOf(date: string, timezone: string): number {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
   return map[short] ?? 0;
-}
-
-function zonedTimeToUtc(date: string, time: string, timezone: string): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const [hh, mm] = time.split(":").map(Number);
-  const naive = (utcGuess: number) => Date.UTC(y, m - 1, d, hh, mm) - tzOffsetMinutes(timezone, utcGuess) * 60_000;
-
-  let guess = naive(Date.UTC(y, m - 1, d, hh, mm));
-  guess = naive(guess);
-  guess = naive(guess);
-  return new Date(guess).toISOString();
-}
-
-function tzOffsetMinutes(timezone: string, utcMs: number): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  }).formatToParts(new Date(utcMs));
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  const localAsUtc = Date.UTC(
-    Number(map.year), Number(map.month) - 1, Number(map.day),
-    Number(map.hour) % 24, Number(map.minute), Number(map.second),
-  );
-  return (localAsUtc - utcMs) / 60_000;
 }
 
 function addMinutes(time: string, minutes: number): string {

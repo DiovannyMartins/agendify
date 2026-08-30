@@ -12,14 +12,15 @@ async function ConfirmationContent({ code, slug }: { code: string; slug: string 
   const booking = data?.[0];
   if (!booking) notFound();
 
+  const tz = booking.business_timezone || "UTC";
   const dateStr = new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "full",
-    timeZone: "UTC",
+    timeZone: tz,
   }).format(new Date(booking.start_at));
   const timeStr = new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "UTC",
+    timeZone: tz,
   }).format(new Date(booking.start_at));
 
   return (

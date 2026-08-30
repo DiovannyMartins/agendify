@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { availabilitySchema } from "@/lib/validation/schemas";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import type { ActionResult } from "@/lib/business/actions";
-import { computeAvailableSlots, overlaps } from "@/lib/booking/availability";
+import { computeAvailableSlots, localDayRangeUtc, overlaps } from "@/lib/booking/availability";
 import type { TimeRange } from "@/lib/booking/availability";
 
 export type { ActionResult };
@@ -184,48 +184,42 @@ export async function getSlotsForDate(
     .eq("weekday", weekday)
     .eq("is_active", true);
 
-  const blockStartDate = new Date(date + "T00:00:00Z");
-  const blockEndDate = new Date(date + "T00:00:00Z");
-  blockEndDate.setUTCDate(blockEndDate.getUTCDate() + 1);
+  const day = localDayRangeUtc(date, business.timezone);
 
   const [{ data: blocks }, { data: bookings }] = await Promise.all([
     supabase
       .from("availability_blocks")
       .select("start_at, end_at")
       .eq("business_id", businessId)
-      .lt("start_at", blockEndDate.toISOString())
-      .gt("end_at", blockStartDate.toISOString()),
+      .lt("start_at", day.end)
+      .gt("end_at", day.start),
     supabase
       .from("bookings")
       .select("start_at, end_at")
       .eq("business_id", businessId)
       .neq("status", "cancelled")
-      .lt("start_at", blockEndDate.toISOString())
-      .gt("end_at", blockStartDate.toISOString()),
+      .lt("start_at", day.end)
+      .gt("end_at", day.start),
   ]);
+
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: business.timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
   // Convert booking times (UTC timestamps) into local HH:MM for candidates.
   const occupancies = (bookings ?? []).map((b) => {
-    const start = new Date(b.start_at);
-    const end = new Date(b.end_at);
-    const fmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: business.timezone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    return { start: fmt.format(start), end: fmt.format(end) };
+    const start = fmt.format(new Date(b.start_at));
+    const end = fmt.format(new Date(b.end_at));
+    return { start, end };
   });
 
-  const blockRanges: TimeRange[] = (blocks ?? []).map((b) => {
-    const fmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: business.timezone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    return { start: fmt.format(new Date(b.start_at)), end: fmt.format(new Date(b.end_at)) };
-  });
+  const blockRanges: TimeRange[] = (blocks ?? []).map((b) => ({
+    start: fmt.format(new Date(b.start_at)),
+    end: fmt.format(new Date(b.end_at)),
+  }));
 
   const available = computeAvailableSlots({
     intervals: (intervals ?? []).map((i) => ({ startTime: i.start_time, endTime: i.end_time })),

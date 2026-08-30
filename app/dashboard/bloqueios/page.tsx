@@ -31,6 +31,7 @@ export default async function BloqueiosPage() {
               startAt={block.start_at}
               endAt={block.end_at}
               reason={block.reason}
+              timezone={business?.timezone ?? "UTC"}
             />
           ))}
         </div>
