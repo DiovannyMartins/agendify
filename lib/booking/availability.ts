@@ -17,6 +17,9 @@ export interface BusinessRules {
   bookingWindowDays: number;
 }
 
+// Overlap of two local wall-clock faixas represented as HH:MM. Valid only for
+// same-day intervals: §8.5 forbids a faixa crossing midnight, so HH:MM string
+// order is a faithful time order.
 export function overlaps(a: TimeRange, b: TimeRange): boolean {
   return a.start < b.end && a.end > b.start;
 }
@@ -24,6 +27,12 @@ export function overlaps(a: TimeRange, b: TimeRange): boolean {
 // Half-open interval overlap in UTC (epoch ms). See §10.3.
 export function overlapsUtc(a: UtcRange, b: UtcRange): boolean {
   return a.startMs < b.endMs && a.endMs > b.startMs;
+}
+
+// Normalise a DB timestamptz pair (ISO string, may be "+00:00" or "Z") to an
+// epoch-ms range so overlaps are format-agnostic.
+export function toUtcRange(startIso: string, endIso: string): UtcRange {
+  return { startMs: new Date(startIso).getTime(), endMs: new Date(endIso).getTime() };
 }
 
 export function minutesToTime(totalMinutes: number): string {

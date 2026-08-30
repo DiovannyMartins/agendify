@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { availabilitySchema } from "@/lib/validation/schemas";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import type { ActionResult } from "@/lib/business/actions";
-import { computeAvailableSlots, localDayRangeUtc, overlaps, weekdayOf } from "@/lib/booking/availability";
+import { computeAvailableSlots, localDayRangeUtc, overlaps, toUtcRange, weekdayOf } from "@/lib/booking/availability";
 import type { UtcRange } from "@/lib/booking/availability";
 
 export type { ActionResult };
@@ -194,9 +194,9 @@ export async function getSlotsForDate(
 
   // Blocks/bookings are read in UTC; computeAvailableSlots resolves each local
   // candidate to UTC before overlap checking (fixes midnight-crossing blocks).
-  const occupancies: UtcRange[] = (bookings ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() }));
+  const occupancies: UtcRange[] = (bookings ?? []).map((b) => toUtcRange(b.start_at, b.end_at));
 
-  const blockRanges: UtcRange[] = (blocks ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() }));
+  const blockRanges: UtcRange[] = (blocks ?? []).map((b) => toUtcRange(b.start_at, b.end_at));
 
   const available = computeAvailableSlots({
     intervals: (intervals ?? []).map((i) => ({ startTime: i.start_time, endTime: i.end_time })),

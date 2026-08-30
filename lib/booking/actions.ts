@@ -5,6 +5,7 @@ import { bookingSchema } from "@/lib/validation/schemas";
 import {
   computeAvailableSlots,
   localDayRangeUtc,
+  toUtcRange,
   weekdayOf,
   zonedTimeToUtc,
   type SlotInterval,
@@ -161,8 +162,8 @@ async function getSlotRange(
 
   return {
     intervals: intervals.map((i) => ({ startTime: i.start_time, endTime: i.end_time })),
-    blocks: (blocks ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() })),
-    occupancies: (bookings ?? []).map((b) => ({ startMs: new Date(b.start_at).getTime(), endMs: new Date(b.end_at).getTime() })),
+    blocks: (blocks ?? []).map((b) => toUtcRange(b.start_at, b.end_at)),
+    occupancies: (bookings ?? []).map((b) => toUtcRange(b.start_at, b.end_at)),
   };
 }
 
