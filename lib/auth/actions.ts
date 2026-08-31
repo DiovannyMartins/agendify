@@ -87,8 +87,10 @@ export async function requestPasswordReset(_prev: ActionResult, formData: FormDa
     return { ok: false, code: "VALIDATION", message: "Informe seu e-mail.", fieldErrors: {} };
   }
 
+  // Route the recovery callback through the existing code-exchange handler so the
+  // session is established before the new-password form renders (§24).
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/redefinir-senha`,
+    redirectTo: `${origin}/auth/callback?next=/redefinir-senha`,
   });
 
   if (error) {

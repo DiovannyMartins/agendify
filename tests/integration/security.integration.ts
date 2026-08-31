@@ -41,14 +41,38 @@ function bookingArgs(businessId: string, serviceId: string, startAt = SLOT_1, ph
   };
 }
 
+// Retry the business insert on the transient `businesses_owner_id_fkey` FK race
+// that can appear when the two integration files run in parallel against the
+// remote project (the just-upserted owner profile may still be incurring
+// primary/connection-pool visibility lag). Production constraints are untouched.
+async function retryOnFk<T>(fn: () => Promise<T>, attempts = 6, delayMs = 250): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e as { message?: unknown })?.message ?? e);
+      if (!/businesses_owner_id_fkey|23503/i.test(msg)) throw e;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 async function makeOwnerAdmin(prefix: string) {
-  const { data } = await admin.auth.admin.createUser({
+  const { data, error } = await admin.auth.admin.createUser({
     email: `${prefix}.${stamp}@agendify.dev`,
     password: PASSWORD,
     email_confirm: true,
   });
-  const id = data!.user!.id;
-  await admin.from("profiles").upsert({ id, display_name: `Donx ${prefix}` }, { onConflict: "id" });
+  if (error || !data?.user?.id) throw new Error(`owner ${prefix} user: ${error?.message ?? "no id"}`);
+  const id = data.user.id;
+  const pu = await admin.from("profiles").upsert({ id, display_name: `Donx ${prefix}` }, { onConflict: "id" });
+  if (pu.error) throw new Error(`owner ${prefix} profile: ${pu.error.message}`);
+  // Confirm the profile is visible before any business references it (see §16).
+  const pr = await admin.from("profiles").select("id").eq("id", id).maybeSingle();
+  if (pr.error || !pr.data) throw new Error(`owner ${prefix} profile not visible: ${pr.error?.message ?? "null"}`);
   return id;
 }
 
@@ -100,14 +124,14 @@ beforeAll(async () => {
     return svc!.id;
   }
 
-  businessA = await makeBusiness(ownerAId, "a", true);
+  businessA = await retryOnFk(() => makeBusiness(ownerAId, "a", true));
   activeServiceA = await makeService(businessA, "a-active", true);
   inactiveServiceA = await makeService(businessA, "a-inactive", false);
 
-  businessB = await makeBusiness(ownerBId, "b", true);
+  businessB = await retryOnFk(() => makeBusiness(ownerBId, "b", true));
   serviceB = await makeService(businessB, "b", true);
 
-  businessC = await makeBusiness(ownerCId, "c", false);
+  businessC = await retryOnFk(() => makeBusiness(ownerCId, "c", false));
   serviceC = await makeService(businessC, "c", false);
 });
 

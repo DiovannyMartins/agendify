@@ -2,7 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 const PROTECTED_PREFIXES = ["/dashboard"];
-const AUTH_ROUTES = ["/login", "/cadastro", "/recuperar-senha", "/redefinir-senha"];
+// /redefinir-senha is deliberately NOT in AUTH_ROUTES: it must remain reachable
+// by a user who has just settled a password-recovery session (§24), otherwise the
+// proxy would bounce them to /dashboard before they can set a new password.
+const AUTH_ROUTES = ["/login", "/cadastro", "/recuperar-senha"];
 
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);

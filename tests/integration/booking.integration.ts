@@ -14,6 +14,24 @@ let businessId = "";
 let serviceId = "";
 let otherUserId = "";
 
+// Retry the business upsert on the transient `businesses_owner_id_fkey` FK race
+// that can appear when the two integration files run in parallel against the
+// remote project. Production constraints are untouched.
+async function retryOnFk<T>(fn: () => Promise<T>, attempts = 6, delayMs = 250): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e as { message?: unknown })?.message ?? e);
+      if (!/businesses_owner_id_fkey|23503/i.test(msg)) throw e;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 beforeAll(async () => {
   admin = adminClient();
 
@@ -28,25 +46,27 @@ beforeAll(async () => {
     { onConflict: "id" },
   );
 
-  const { data: biz, error: bizErr } = await admin
-    .from("businesses")
-    .upsert(
-      {
-        owner_id: ownerId,
-        name: "Biz Integracao",
-        slug: `biz-integracao-${stamp}`,
-        phone: "+5511987654321",
-        timezone: "America/Sao_Paulo",
-        slot_interval_minutes: 30,
-        min_notice_minutes: 0,
-        booking_window_days: 60,
-      },
-      { onConflict: "slug" },
-    )
-    .select("*")
-    .single();
-  if (bizErr) throw new Error(`business upsert: ${bizErr.message}`);
-  businessId = biz.id;
+  businessId = await retryOnFk(async () => {
+    const { data: biz, error: bizErr } = await admin
+      .from("businesses")
+      .upsert(
+        {
+          owner_id: ownerId,
+          name: "Biz Integracao",
+          slug: `biz-integracao-${stamp}`,
+          phone: "+5511987654321",
+          timezone: "America/Sao_Paulo",
+          slot_interval_minutes: 30,
+          min_notice_minutes: 0,
+          booking_window_days: 60,
+        },
+        { onConflict: "slug" },
+      )
+      .select("*")
+      .single();
+    if (bizErr) throw new Error(`business upsert: ${bizErr.message}`);
+    return biz.id;
+  });
 
   const { data: svc } = await admin
     .from("services")
