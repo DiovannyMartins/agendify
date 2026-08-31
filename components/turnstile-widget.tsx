@@ -56,6 +56,10 @@ export const TurnstileWidget = memo(function TurnstileWidget({
       if (onState) onState(true);
       return;
     }
+    // With a sitekey the challenge must be solved before any submit. Start the
+    // form disabled so a customer can't submit with an empty token and get a
+    // spurious "human verification failed" rejection.
+    if (onState) onState(false);
     let cancelled = false;
     let polls = 0;
 

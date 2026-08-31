@@ -14,7 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-4rem)] flex-col gap-8 px-4 py-8 lg:px-6">
-      <DashboardNav />
+      <DashboardNav slug={business?.slug ?? null} />
       <div className="flex-1">{children}</div>
       <p className="text-xs text-muted-foreground">
         {business ? `Negócio: ${business.slug}` : "Configuração pendente"}

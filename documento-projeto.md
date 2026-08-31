@@ -310,7 +310,7 @@ customers  1---N bookings
 | --- | --- | --- |
 | id | uuid | PK. |
 | business_id | uuid | FK businesses.id. |
-| weekday | smallint | 0-6; padrão definido no código e documentado (0=domingo). |
+| weekday | smallint | 1-7 (ISO 8601); padrão definido no código e documentado (1=segunda … 7=domingo). |
 | start_time | time | hora local do negócio. |
 | end_time | time | deve ser \> start_time; faixa não atravessa meia-noite. |
 | is_active | boolean | default true. |

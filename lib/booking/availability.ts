@@ -132,15 +132,15 @@ export function localDayRangeUtc(date: string, timezone: string): { start: strin
   return { start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() };
 }
 
-// Weekday of a business-local date (ISO yyyy-mm-dd), as 0=Sun..6=Sat.
+// Weekday of a business-local date (ISO yyyy-mm-dd), as 1=Mon..7=Sun (ISO 8601).
 export function weekdayOf(date: string, timezone: string): number {
   const short = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(
     new Date(`${date}T12:00:00Z`),
   );
   const map: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+    Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
   };
-  return map[short] ?? 0;
+  return map[short] ?? 1;
 }
 
 export function isValidSlot(date: string, start: string, now: Date, rules: BusinessRules): boolean {

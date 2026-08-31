@@ -26,7 +26,9 @@ export const businessSchema = z.object({
   slotIntervalMinutes: z.union([z.literal(15), z.literal(30), z.literal(60)], { error: "Intervalo deve ser 15, 30 ou 60." }),
   minNoticeMinutes: z.number().int().min(0).max(10080),
   bookingWindowDays: z.number().int().min(1).max(180),
-  description: z.string().trim().max(500).optional(),
+  // nullish: accepts "", null (empty in the form maps to null server-side) and
+  // undefined, so the optional description can genuinely be left blank.
+  description: z.string().trim().max(500).nullish(),
 });
 export type BusinessInput = z.infer<typeof businessSchema>;
 
@@ -45,13 +47,13 @@ export const businessFormSchema = z.object({
   slotIntervalMinutes: z.string().regex(/^(15|30|60)$/, "Intervalo deve ser 15, 30 ou 60."),
   minNoticeMinutes: z.number().int().min(0).max(10080),
   bookingWindowDays: z.number().int().min(1).max(180),
-  description: z.string().trim().max(500).optional(),
+  description: z.string().trim().max(500).nullish(),
 });
 export type BusinessFormValues = z.infer<typeof businessFormSchema>;
 
 export const serviceSchema = z.object({
   name: z.string().trim().min(2).max(80),
-  description: z.string().trim().max(500).optional(),
+  description: z.string().trim().max(500).nullish(),
   durationMinutes: z.number().int().min(5).max(480),
   priceCents: z.number().int().min(0),
 });
@@ -61,7 +63,7 @@ export type ServiceInput = z.infer<typeof serviceSchema>;
 // in reais (e.g. "49.90") and converted to cents in the server action.
 export const serviceFormSchema = z.object({
   name: z.string().trim().min(2).max(80),
-  description: z.string().trim().max(500).optional(),
+  description: z.string().trim().max(500).nullish(),
   durationMinutes: z.number().int().min(5).max(480),
   price: z.string().trim().regex(/^\d+(\.\d{1,2})?$/, "Informe um preço válido."),
 });
@@ -69,7 +71,7 @@ export type ServiceFormValues = z.infer<typeof serviceFormSchema>;
 
 export const availabilitySchema = z
   .object({
-    weekday: z.number().int().min(0).max(6),
+    weekday: z.number().int().min(1).max(7),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
   })
@@ -89,7 +91,7 @@ export type AvailabilityInput = z.infer<typeof availabilitySchema>;
 export const blockSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
-  reason: z.string().trim().max(120).optional(),
+  reason: z.string().trim().max(120).nullish(),
 });
 export type BlockInput = z.infer<typeof blockSchema>;
 

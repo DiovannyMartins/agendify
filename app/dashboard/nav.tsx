@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarClock, CalendarDays, Blocks, CalendarPlus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CopyPublicLink } from "@/components/copy-public-link";
 import { logout } from "@/lib/auth/actions";
 
 const links = [
@@ -14,7 +15,7 @@ const links = [
   { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-export function DashboardNav() {
+export function DashboardNav({ slug }: { slug: string | null }) {
   const pathname = usePathname();
 
   return (
@@ -41,13 +42,17 @@ export function DashboardNav() {
         })}
       </div>
       <div className="flex items-center gap-2">
-        <Link
-          href="/dashboard/configuracoes"
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-        >
-          <CalendarPlus className="size-4" />
-          Compartilhar link
-        </Link>
+        {slug ? (
+          <CopyPublicLink slug={slug}>Compartilhar link</CopyPublicLink>
+        ) : (
+          <Link
+            href="/dashboard/configuracoes"
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <CalendarPlus className="size-4" />
+            Compartilhar link
+          </Link>
+        )}
         <form action={logout}>
           <button
             type="submit"
