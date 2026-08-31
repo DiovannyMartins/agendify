@@ -11,6 +11,8 @@ import {
   type SlotInterval,
   type UtcRange,
 } from "@/lib/booking/availability";
+import { enforceRateLimit, getClientIp } from "@/lib/booking/rate-limit";
+import { verifyTurnstile } from "@/lib/booking/anti-bot";
 
 export type ActionResult = { ok: boolean; code?: string; message?: string; publicCode?: string };
 
@@ -25,10 +27,17 @@ export async function createBooking(input: {
   customerPhone: string;
   customerEmail?: string;
   customerNote?: string;
+  cfTurnstileToken?: string;
 }): Promise<ActionResult> {
   // Server-authoritative flow: the admin client reads blocks/bookings of any
   // business (anonymous RLS would block those reads) for revalidation.
   const supabase = createAdminClient();
+
+  // Anti-bot: when TURNSTILE_SECRET_KEY is configured, require a valid token.
+  const gate = await verifyTurnstile(input.cfTurnstileToken);
+  if (!gate.ok) {
+    return { ok: false, code: "captcha_failed", message: "Verificação humana falhou. Tente novamente." };
+  }
 
   const { data: business } = await supabase
     .from("businesses")
@@ -39,6 +48,18 @@ export async function createBooking(input: {
 
   if (!business) {
     return { ok: false, code: "not_found", message: "Página não encontrada." };
+  }
+
+  // Rate limit before expensive work, keyed on IP+business and a business-wide
+  // aggregate (never only on the customer phone).
+  const ip = await getClientIp();
+  const allowed = await enforceRateLimit(supabase, ip, business.id);
+  if (!allowed) {
+    return {
+      ok: false,
+      code: "rate_limited",
+      message: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    };
   }
 
   const startAtIso = zonedTimeToUtc(input.date, input.startTime, business.timezone);

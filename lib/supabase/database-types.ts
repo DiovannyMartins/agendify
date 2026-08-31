@@ -330,11 +330,37 @@ export type Database = {
           },
         ]
       }
+      booking_rate_limits: {
+        Row: {
+          key: string
+          window_start: string
+          count: number
+        }
+        Insert: {
+          key: string
+          window_start: string
+          count?: number
+        }
+        Update: {
+          key?: string
+          window_start?: string
+          count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_booking_rate_limit: {
+        Args: {
+          p_key: string
+          p_limit: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       create_booking: {
         Args: {
           p_business_id: string
