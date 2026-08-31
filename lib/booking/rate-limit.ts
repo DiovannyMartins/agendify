@@ -13,6 +13,13 @@ export const RATE_LIMIT = {
   perBusiness: { limit: 60, windowSeconds: 60 * 15 },
 } as const;
 
+// Public consultation (§16) is an anonymous, unguessable-code lookup. Keep it
+// separate from the reservation counters so a flood of lookups can't starve a
+// real customer's ability to book.
+export const CONSULT_RATE_LIMIT = {
+  perIp: { limit: 12, windowSeconds: 60 * 15 },
+} as const;
+
 export async function getClientIp(): Promise<string> {
   const h = await headers();
   const xff = h.get("x-forwarded-for");
@@ -43,4 +50,19 @@ export async function enforceRateLimit(
     if (data === false) return false;
   }
   return true;
+}
+
+// Consultation is keyed only on the client IP (no business scope — the caller is
+// anonymous and the code is what matters). Returns true when within limits.
+export async function enforceConsultRateLimit(
+  supabase: ServerClient,
+  ip: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("check_booking_rate_limit", {
+    p_key: `ip:${ip}|consult`,
+    p_limit: CONSULT_RATE_LIMIT.perIp.limit,
+    p_window_seconds: CONSULT_RATE_LIMIT.perIp.windowSeconds,
+  });
+  if (error) throw error;
+  return data === true;
 }
