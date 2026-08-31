@@ -23,10 +23,18 @@ export function Cta({ className }: { className?: string }) {
   );
 }
 
-export function SecondaryCta({ className, href = "/login" }: { className?: string; href?: string }) {
+export function SecondaryCta({
+  className,
+  href = "/login",
+  label = "Entrar",
+}: {
+  className?: string;
+  href?: string;
+  label?: string;
+}) {
   return (
     <Link href={href} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "px-6", className)}>
-      Entrar
+      {label}
     </Link>
   );
 }

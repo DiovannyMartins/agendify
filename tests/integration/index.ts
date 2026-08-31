@@ -14,6 +14,12 @@ export function adminClient(): SupabaseClient<Database> {
   });
 }
 
+// A publishable-key client with no session, used to exercise RLS/ACL as the
+// anonymous (anon) role.
+export function anonClient(): SupabaseClient<Database> {
+  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE);
+}
+
 // Sign in using the anon-key client and return a session-scoped client used to
 // exercise RLS as a real authenticated user.
 export async function anonClientForUser(email: string, password: string) {
