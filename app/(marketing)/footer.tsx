@@ -28,14 +28,16 @@ const columns = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-muted/40">
+    <footer className="border-t border-border bg-muted/30">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 lg:px-6">
         <div className="space-y-3">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <CalendarClock className="size-5" />
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <CalendarClock className="size-4" />
+            </span>
             <span>Agendify</span>
           </Link>
-          <p className="text-sm text-muted-foreground">
+          <p className="max-w-xs text-sm text-muted-foreground">
             Sua agenda trabalhando por você, 24 horas por dia.
           </p>
         </div>
@@ -46,7 +48,10 @@ export function Footer() {
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               {col.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="transition-colors hover:text-foreground">
+                  <Link
+                    href={link.href}
+                    className="transition-colors hover:text-foreground"
+                  >
                     {link.label}
                   </Link>
                 </li>

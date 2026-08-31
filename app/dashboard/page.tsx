@@ -30,48 +30,50 @@ export default async function DashboardHome() {
       </header>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
-              Serviços
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Cadastre e gerencie seus serviços.</p>
-            <Link href="/dashboard/servicos" className="text-sm font-medium hover:underline">
-              Gerenciar →
-            </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="size-4 text-primary" />
-              Reservas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Acompanhe seus próximos atendimentos.</p>
-            <Link href="/dashboard/agenda" className="text-sm font-medium hover:underline">
-              Ver agenda →
-            </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Blocks className="size-4 text-primary" />
-              Bloqueios
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Pausas, férias e exceções de agenda.</p>
-            <Link href="/dashboard/bloqueios" className="text-sm font-medium hover:underline">
-              Gerenciar →
-            </Link>
-          </CardContent>
-        </Card>
+        {[
+          {
+            href: "/dashboard/servicos",
+            icon: Sparkles,
+            title: "Serviços",
+            description: "Cadastre e gerencie seus serviços.",
+            action: "Gerenciar",
+          },
+          {
+            href: "/dashboard/agenda",
+            icon: CalendarDays,
+            title: "Reservas",
+            description: "Acompanhe seus próximos atendimentos.",
+            action: "Ver agenda",
+          },
+          {
+            href: "/dashboard/bloqueios",
+            icon: Blocks,
+            title: "Bloqueios",
+            description: "Pausas, férias e exceções de agenda.",
+            action: "Gerenciar",
+          },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="group block rounded-xl ring-1 ring-foreground/10 transition-all duration-300 hover:-translate-y-1 hover:ring-primary/30 hover:shadow-2xl hover:shadow-primary/5"
+          >
+            <Card className="h-full ring-0 shadow-none group-hover:shadow-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <item.icon className="size-4 text-primary" />
+                  {item.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{item.description}</p>
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary transition-transform group-hover:translate-x-0.5">
+                  {item.action} <span aria-hidden>→</span>
+                </span>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </div>
   );

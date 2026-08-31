@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CalendarClock, CalendarDays, Blocks, CalendarPlus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/auth/actions";
@@ -11,28 +14,36 @@ const links = [
   { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-export async function DashboardNav() {
+export function DashboardNav() {
+  const pathname = usePathname();
+
   return (
     <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
       <div className="flex flex-wrap items-center gap-1">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-              link.href.endsWith("agenda") === false && link.href === "/dashboard" && "bg-muted text-foreground",
-            )}
-          >
-            <link.icon className="size-4" />
-            {link.label}
-          </Link>
-        ))}
+        {links.map((link) => {
+          const active = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <link.icon className="size-4" />
+              {link.label}
+            </Link>
+          );
+        })}
       </div>
       <div className="flex items-center gap-2">
         <Link
           href="/dashboard/configuracoes"
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
         >
           <CalendarPlus className="size-4" />
           Compartilhar link
@@ -40,7 +51,7 @@ export async function DashboardNav() {
         <form action={logout}>
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Sair
           </button>

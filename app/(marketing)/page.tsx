@@ -1,8 +1,8 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   CalendarCheck,
   CalendarClock,
-  Check,
   Clock,
   MessageSquare,
   ShieldCheck,
@@ -11,40 +11,55 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Reveal } from "@/components/reveal";
 import { Cta, SecondaryCta } from "./layout";
+import { Faq } from "./faq";
+import { Plans } from "./plans";
 
 const benefits = [
   {
     icon: CalendarClock,
     title: "Agendamento 24/7",
     description:
-      "Seus clientes reservam mesmo quando você está ocupado ou fora do expediente. Sem mensagens para responder",
+      "Seus clientes reservam mesmo quando você está ocupado ou fora do expediente, sem mensagens para responder.",
   },
   {
     icon: CalendarCheck,
     title: "Agenda organizada",
     description:
-      "Horários calculados a partir de regras recorrentes, bloqueios e reservas existentes. Zero conflito",
+      "Horários calculados a partir de regras recorrentes, bloqueios e reservas existentes, sem conflitos.",
   },
   {
     icon: MessageSquare,
     title: "Menos trabalho manual",
     description:
-      "Chega de troca de mensagens para confirmar serviço, data e hora. O cliente reserva sozinho",
+      "Chega de troca de mensagens para confirmar serviço, data e hora. O cliente reserva sozinho.",
   },
   {
     icon: Sparkles,
     title: "Experiência profissional",
     description:
-      "Cada negócio possui uma página pública de reservas responsiva, pronta para compartilhar",
+      "Cada negócio possui uma página pública de reservas responsiva, pronta para compartilhar.",
   },
 ];
 
 const howItWorks = [
-  { step: "01", title: "Configure", description: "Crie seu negócio, cadastre serviços e defina sua disponibilidade." },
-  { step: "02", title: "Compartilhe", description: "Divulgue seu link público pelo WhatsApp, Instagram ou redes sociais." },
-  { step: "03", title: "Receba reservas", description: "Seus clientes reservam enquanto você acompanha tudo no painel." },
+  {
+    step: "01",
+    title: "Configure",
+    description: "Crie seu negócio, cadastre serviços e defina sua disponibilidade.",
+  },
+  {
+    step: "02",
+    title: "Compartilhe",
+    description: "Divulgue seu link público pelo WhatsApp, Instagram ou redes sociais.",
+  },
+  {
+    step: "03",
+    title: "Receba reservas",
+    description: "Seus clientes reservam enquanto você acompanha tudo no painel.",
+  },
 ];
 
 const features = [
@@ -56,245 +71,282 @@ const features = [
   { icon: ShieldCheck, title: "Segurança", description: "Validação no servidor, RLS e isolamento entre negócios." },
 ];
 
-const plans = [
-  {
-    name: "Grátis",
-    price: "R$ 0",
-    period: "/mês",
-    description: "Para começar a receber reservas online.",
-    features: ["1 negócio", "Serviços ilimitados", "Página pública", "Dashboard"],
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "R$ 49",
-    period: "/mês",
-    description: "Para crescer com mais controle.",
-    features: ["Tudo do Grátis", "Relatórios", "Lembretes automáticos", "Suporte prioritário"],
-    highlighted: true,
-  },
-];
-
-const faqs = [
-  {
-    q: "Como funciona o agendamento?",
-    a: "Você configura serviços e horários de atendimento. Seus clientes escolhem a data e o horário na sua página pública e a reserva aparece imediatamente no seu painel.",
-  },
-  {
-    q: "Posso cancelar um horário?",
-    a: "Sim. Você cancela, conclui ou marca ausência pelo dashboard. Mudanças de status liberam o horário para novas reservas.",
-  },
-  {
-    q: "Meus dados estão seguros?",
-    a: "Sim. A validação acontece no servidor, os dados de clientes são isolados por negócio e tratados segundo boas práticas de privacidade.",
-  },
-  {
-    q: "Preciso instalar algo?",
-    a: "Não. O Agendify funciona direto no navegador, no celular ou no computador. Você só precisa de um link para compartilhar.",
-  },
+const audiences = [
+  { label: "Barbearias" },
+  { label: "Salões de beleza" },
+  { label: "Clínicas" },
+  { label: "Profissionais autônomos" },
+  { label: "Estúdios" },
+  { label: "Personal trainers" },
+  { label: "Consultorias" },
 ];
 
 export default function MarketingHome() {
   return (
-    <div className="flex flex-col gap-24 py-12 md:gap-32">
+    <div className="flex flex-col">
       {/* Hero */}
-      <section className="mx-auto flex max-w-6xl flex-col items-center px-4 text-center lg:px-6">
-        <Badge variant="outline" className="mb-6 rounded-full px-3 py-1">
-          Agendamentos online para profissionais
-        </Badge>
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl md:text-6xl">
-          Sua agenda trabalhando por você,{" "}
-          <span className="text-primary">24 horas por dia</span>.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-          Receba agendamentos online, organize seus horários e ofereça uma experiência
-          mais profissional aos seus clientes.
-        </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Cta />
-          <SecondaryCta href="/#como-funciona" />
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <img
+            src="/images/hero.png"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-background/70" />
+          <div className="absolute left-1/2 top-[-20%] h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-primary/10 blur-[140px] motion-safe:animate-glow-drift" />
         </div>
-        <div className="mt-14 w-full max-w-3xl rounded-2xl border border-border bg-muted/40 p-4 text-left shadow-sm">
-          <div className="rounded-xl bg-background p-5">
-            <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
-              <div className="flex items-center gap-2 font-semibold">
-                <CalendarClock className="size-4" />
-                Barbearia Demo
-              </div>
-              <Badge variant="secondary">Disponível</Badge>
+
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center px-4 pt-16 pb-20 text-center lg:px-6 md:pt-24">
+          <Reveal variant="down">
+            <Badge variant="outline" className="rounded-full px-3.5 py-1 text-sm">
+              <Sparkles className="size-3" />
+              Agendamentos online para profissionais
+            </Badge>
+          </Reveal>
+
+          <Reveal delay={90}>
+            <h1 className="mt-6 max-w-3xl text-balance text-4xl font-semibold leading-tight tracking-tight sm:text-5xl md:text-6xl">
+              Sua agenda trabalhando por você,{" "}
+              <span className="text-gradient">24 horas por dia</span>.
+            </h1>
+          </Reveal>
+
+          <Reveal delay={180}>
+            <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
+              Receba agendamentos online, organize seus horários e ofereça uma
+              experiência mais profissional aos seus clientes.
+            </p>
+          </Reveal>
+
+          <Reveal delay={270}>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Cta />
+              <SecondaryCta href="/#como-funciona" />
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="flex-1 space-y-2">
-                <div className="h-3 w-2/3 rounded bg-muted" />
-                <div className="h-3 w-1/2 rounded bg-muted" />
-                <div className="h-3 w-3/4 rounded bg-muted" />
-              </div>
-              <div className="grid flex-1 grid-cols-3 gap-2">
-                {["08:00", "08:30", "09:00", "09:30", "10:00", "10:30"].map((time, i) => (
-                  <div
-                    key={time}
-                    className={
-                      "rounded-lg border px-2 py-2 text-center text-sm " +
-                      (i === 2
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border")
-                    }
-                  >
-                    {time}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          </Reveal>
+
+          <Reveal delay={360} variant="zoom" className="mt-16 w-full max-w-3xl">
+            <BookingPreview />
+          </Reveal>
         </div>
       </section>
 
       {/* Prova social */}
-      <section className="mx-auto max-w-6xl px-4 text-center lg:px-6">
-        <p className="text-sm uppercase tracking-wide text-muted-foreground">
-          Feito para pequenos negócios
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-muted-foreground">
-          {["Barbearias", "Salões", "Clínicas", "Autônomos", "Estúdios"].map((item) => (
-            <span key={item} className="text-base font-medium">
-              {item}
-            </span>
-          ))}
+      <section className="border-y border-border py-10">
+        <Reveal>
+          <p className="text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+            Feito para pequenos negócios
+          </p>
+        </Reveal>
+        <div className="mask-fade-x mt-6 overflow-hidden">
+          <div className="flex w-max motion-safe:animate-marquee motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:gap-x-10 motion-reduce:gap-y-3">
+            {[...audiences, ...audiences, ...audiences, ...audiences].map((item, i) => (
+              <span
+                key={`${item.label}-${i}`}
+                className="pr-6 text-base font-medium whitespace-nowrap text-muted-foreground"
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Benefícios */}
-      <section className="mx-auto max-w-6xl px-4 lg:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Menos mensagens, mais clientes atendidos
-          </h2>
-          <p className="mt-4 text-muted-foreground">
-            Organize seu negócio e deixe a agenda trabalhar sozinha.
-          </p>
-        </div>
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {benefits.map((b) => (
-            <Card key={b.title}>
-              <CardHeader>
-                <b.icon className="size-6 text-primary" />
-                <CardTitle className="pt-3">{b.title}</CardTitle>
-                <CardDescription>{b.description}</CardDescription>
-              </CardHeader>
-            </Card>
+      <section className="mx-auto w-full max-w-6xl px-4 py-20 lg:px-6 md:py-28">
+        <Reveal>
+          <div className="mx-auto max-w-2xl text-center">
+            <Badge variant="secondary" className="mb-4 rounded-full px-3.5 text-sm">
+              Por que usar o Agendify
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Menos mensagens, mais clientes atendidos
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              Organize seu negócio e deixe a agenda trabalhar sozinha.
+            </p>
+          </div>
+        </Reveal>
+        <div className="mt-10 grid gap-8 sm:grid-cols-2">
+          {benefits.map((b, i) => (
+            <Reveal key={b.title} delay={i * 80}>
+              <Card className="h-full transition-all duration-300 group-hover:border-primary/30 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/5">
+                <CardHeader>
+                  <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <b.icon className="size-5" />
+                  </div>
+                  <CardTitle className="pt-4">{b.title}</CardTitle>
+                  <CardDescription className="leading-relaxed">{b.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* Como funciona */}
-      <section id="como-funciona" className="mx-auto max-w-6xl px-4 lg:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Como funciona</h2>
-          <p className="mt-4 text-muted-foreground">Configure, compartilhe e receba reservas.</p>
-        </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {howItWorks.map((item) => (
-            <div key={item.step} className="relative rounded-2xl border border-border p-8">
-              <span className="text-sm font-semibold text-primary">{item.step}</span>
-              <h3 className="mt-2 text-lg font-medium">{item.title}</h3>
-              <p className="mt-2 text-muted-foreground">{item.description}</p>
+      <section id="como-funciona" className="relative border-y border-border bg-muted/30">
+        <div className="mx-auto w-full max-w-6xl px-4 py-20 lg:px-6 md:py-28">
+          <Reveal>
+            <div className="mx-auto max-w-2xl text-center">
+              <Badge variant="secondary" className="mb-4 rounded-full px-3.5 text-sm">
+                Simples de usar
+              </Badge>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Como funciona</h2>
+              <p className="mt-4 text-muted-foreground">Configure, compartilhe e receba reservas.</p>
             </div>
-          ))}
+          </Reveal>
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {howItWorks.map((item, i) => (
+              <Reveal key={item.step} delay={i * 100}>
+                <div className="group relative h-full rounded-2xl border border-border bg-background p-8 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30">
+                  <div className="flex size-10 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">
+                    {item.step}
+                  </div>
+                  <h3 className="mt-4 text-lg font-medium">{item.title}</h3>
+                  <p className="mt-2 text-muted-foreground">{item.description}</p>
+                  {i < howItWorks.length - 1 && (
+                    <ArrowRight className="absolute top-1/2 -right-4 hidden size-5 -translate-y-1/2 text-muted-foreground md:block" />
+                  )}
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Recursos */}
-      <section id="recursos" className="mx-auto max-w-6xl px-4 lg:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Tudo o que você precisa</h2>
-          <p className="mt-4 text-muted-foreground">
-            Serviços, disponibilidade, bloqueios, reservas, clientes e configurações.
-          </p>
-        </div>
+      <section id="recursos" className="mx-auto w-full max-w-6xl px-4 py-14 lg:px-6 md:py-20">
+        <Reveal>
+          <div className="mx-auto max-w-2xl text-center">
+            <Badge variant="secondary" className="mb-4 rounded-full px-3.5 text-sm">
+              Tudo em um só lugar
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Tudo o que você precisa
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              Serviços, disponibilidade, bloqueios, reservas, clientes e configurações.
+            </p>
+          </div>
+        </Reveal>
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div key={f.title} className="flex gap-4 rounded-2xl border border-border p-6">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <f.icon className="size-5" />
+          {features.map((f, i) => (
+            <Reveal key={f.title} delay={(i % 3) * 80}>
+              <div className="group flex h-full gap-4 rounded-2xl border border-border p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:bg-muted/20">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <f.icon className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-medium">{f.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{f.description}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-medium">{f.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{f.description}</p>
-              </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* Planos */}
-      <section id="planos" className="mx-auto max-w-4xl px-4 lg:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Planos</h2>
-          <p className="mt-4 text-muted-foreground">
-            Comece grátis e evolua conforme seu negócio cresce.
-          </p>
-        </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {plans.map((plan) => (
-            <Card key={plan.name} className={plan.highlighted ? "ring-2 ring-primary" : ""}>
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
-                <div className="mt-2">
-                  <span className="text-3xl font-semibold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm">
-                      <Check className="size-4 text-primary" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Planos demonstrativos enquanto a cobrança ainda não está habilitada.
-        </p>
-      </section>
+      <Plans />
 
       {/* FAQ */}
-      <section id="faq" className="mx-auto max-w-3xl px-4 lg:px-6">
-        <h2 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">
-          Perguntas frequentes
-        </h2>
-        <div className="mt-10 space-y-4">
-          {faqs.map((faq) => (
-            <div key={faq.q} className="rounded-2xl border border-border p-6">
-              <h3 className="font-medium">{faq.q}</h3>
-              <p className="mt-2 text-muted-foreground">{faq.a}</p>
-            </div>
-          ))}
+      <section id="faq" className="mx-auto w-full max-w-3xl px-4 py-14 lg:px-6 md:py-20">
+        <Reveal>
+          <div className="text-center">
+            <Badge variant="secondary" className="mb-4 rounded-full px-3.5 text-sm">
+              Dúvidas
+            </Badge>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Perguntas frequentes
+            </h2>
+          </div>
+        </Reveal>
+        <div className="mt-10 space-y-3">
+          <Faq />
         </div>
       </section>
 
       {/* CTA final */}
-      <section className="mx-auto max-w-6xl px-4 lg:px-6">
-        <div className="rounded-3xl bg-primary p-10 text-center text-primary-foreground sm:p-14">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Crie sua agenda agora
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl">
-            Leva menos de um minuto para começar a receber reservas online.
-          </p>
-          <Link
-            href="/cadastro"
-            className="mt-8 inline-flex h-11 items-center justify-center rounded-lg bg-background px-6 text-sm font-medium text-foreground transition-opacity hover:opacity-90"
-          >
-            Criar minha agenda
-          </Link>
-        </div>
+      <section className="mx-auto w-full max-w-6xl px-4 pb-20 lg:px-6 md:pb-28">
+        <Reveal variant="zoom">
+          <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-14 text-center text-primary-foreground sm:px-14">
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-64 w-[560px] -translate-x-1/2 rounded-full bg-black/15 blur-[100px]" />
+            <h2 className="relative text-3xl font-semibold tracking-tight sm:text-4xl">
+              Crie sua agenda agora
+            </h2>
+            <p className="relative mx-auto mt-4 max-w-xl text-primary-foreground/80">
+              Leva menos de um minuto para começar a receber reservas online.
+            </p>
+            <Link
+              href="/cadastro"
+              className="group relative mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-background px-7 text-sm font-medium text-foreground transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Criar minha agenda
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </Reveal>
       </section>
+    </div>
+  );
+}
+
+function BookingPreview() {
+  return (
+    <div className="relative rounded-3xl border border-border bg-card/80 p-4 text-left shadow-2xl backdrop-blur-sm">
+      <div className="rounded-2xl bg-background p-5">
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <CalendarClock className="size-4" />
+            </span>
+            Barbearia Demo
+          </div>
+          <Badge variant="secondary">
+            <span className="size-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+            Disponível
+          </Badge>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex-1 space-y-2.5">
+            <div className="mb-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Serviço
+              </p>
+              <p className="mt-1 text-sm font-medium">Corte + Barba</p>
+              <p className="text-sm text-muted-foreground">R$ 60 · 45 min</p>
+            </div>
+            <div className="space-y-2.5">
+              {[
+                { label: "Data", value: "Hoje, 14:30" },
+                { label: "Cliente", value: "Maria S." },
+                { label: "Status", value: "Confirmada" },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="font-medium">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="grid flex-1 content-start grid-cols-3 gap-2">
+            {["08:00", "08:30", "09:00", "09:30", "10:00", "10:30"].map((time, i) => (
+              <div
+                key={time}
+                className={
+                  "rounded-lg border px-2 py-2 text-center text-sm transition-colors " +
+                  (i === 2
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border motion-safe:hover:bg-muted motion-safe:hover:animate-none")
+                }
+              >
+                {time}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
