@@ -47,8 +47,7 @@ export function Plans() {
           const isSelected = selected === i;
           return (
             <Reveal key={plan.name} delay={i * 100}>
-              <button
-                type="button"
+              <div
                 onClick={() => setSelected(i)}
                 className="block w-full cursor-pointer rounded-xl text-left"
               >
@@ -82,7 +81,7 @@ export function Plans() {
                     </div>
                   </CardContent>
                 </Card>
-              </button>
+              </div>
             </Reveal>
           );
         })}

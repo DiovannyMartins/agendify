@@ -111,11 +111,12 @@ describe("createBooking RPC (§11.4)", () => {
 });
 
 describe("RLS (§13.2)", () => {
-  it("user A cannot read user B's bookings via anon client", async () => {
+  it("the business owner can read their own bookings via the anon client", async () => {
     const owner = await anonClientForUser(EMAIL, PASSWORD);
     const { data } = await owner.from("bookings").select("*").eq("business_id", businessId);
-    // owner should see their own bookings (business owned by them)
+    // The owner owns the business, so their confirmed booking (created above) is visible.
     expect(Array.isArray(data)).toBe(true);
+    expect(data!.length).toBeGreaterThan(0);
   });
 
   it("an outsider CAN read the public business profile (sec 13.1) but cannot read its bookings", async () => {
@@ -134,14 +135,17 @@ describe("RLS (§13.2)", () => {
 });
 
 describe("block vs future booking conflict (§9.4)", () => {
-  it("business owner cannot create a block overlapping an active booking", async () => {
+  it("owner cannot create a block overlapping an active future booking", async () => {
     const owner = await anonClientForUser(EMAIL, PASSWORD);
-    const { data: conflict } = await owner
-      .from("bookings")
-      .select("start_at, end_at")
-      .eq("business_id", businessId)
-      .gt("start_at", "2099-01-01T00:00:00.000Z");
-    // Confirm there is at least an active booking to conflict with.
-    expect(conflict!.length).toBeGreaterThan(0);
+    // 2099-01-05T14:00–14:30 is the confirmed booking created above; this block
+    // covers 13:30–15:00, so it must be rejected by the database layer.
+    const { error } = await owner.from("availability_blocks").insert({
+      business_id: businessId,
+      start_at: "2099-01-05T13:30:00.000Z",
+      end_at: "2099-01-05T15:00:00.000Z",
+      reason: "teste sobreposicao",
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/overlap|book|block|conflit/i);
   });
 });

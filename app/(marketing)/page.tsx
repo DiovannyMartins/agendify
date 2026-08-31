@@ -121,7 +121,7 @@ export default function MarketingHome() {
           <Reveal delay={270}>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Cta />
-              <SecondaryCta href="/#como-funciona" />
+              <SecondaryCta href="/#como-funciona" label="Ver como funciona" />
             </div>
           </Reveal>
 

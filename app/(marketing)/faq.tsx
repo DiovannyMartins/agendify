@@ -42,6 +42,7 @@ export function Faq() {
               type="button"
               onClick={() => setOpen(isOpen ? null : i)}
               aria-expanded={isOpen}
+              aria-controls={`faq-panel-${i}`}
               className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
             >
               <span className="font-medium">{faq.q}</span>
@@ -53,9 +54,12 @@ export function Faq() {
               />
             </button>
             <div
+              id={`faq-panel-${i}`}
+              role="region"
+              aria-hidden={!isOpen}
               className={cn(
                 "grid transition-all duration-300 ease-out",
-                isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 invisible",
               )}
             >
               <div className="overflow-hidden">
