@@ -4,6 +4,25 @@
 -- concurrency. Both block and booking writes now serialize per business via an
 -- advisory transaction lock, so concurrent inserts of the same business cannot
 -- both pass the overlap check.
+--
+-- Preflight: before installing the trigger, fail if any active booking already
+-- overlaps a block (data written before this rule existed). The operator must
+-- reconcile surviving conflicts before the migration can apply.
+
+do $$
+begin
+  if exists (
+    select 1
+    from public.bookings b
+    join public.availability_blocks bl
+      on bl.business_id = b.business_id
+    where b.status <> 'cancelled'
+      and tstzrange(b.start_at, b.end_at, '[)') && tstzrange(bl.start_at, bl.end_at, '[)')
+  ) then
+    raise exception 'EXISTING_BOOKING_BLOCK_OVERLAP';
+  end if;
+end;
+$$;
 
 create or replace function public.prevent_block_booking_overlap()
 returns trigger
@@ -34,7 +53,7 @@ set search_path = public
 as $$
 begin
   perform pg_advisory_xact_lock(hashtext(new.business_id::text));
-  if exists (
+  if new.status <> 'cancelled' and exists (
     select 1
     from public.availability_blocks bl
     where bl.business_id = new.business_id
