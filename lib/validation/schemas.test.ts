@@ -4,6 +4,7 @@ import {
   bookingSchema,
   businessSchema,
   loginSchema,
+  publicCodeSchema,
   serviceSchema,
   signupSchema,
 } from "@/lib/validation/schemas";
@@ -110,6 +111,24 @@ describe("bookingSchema", () => {
 
   it("rejects an invalid email", () => {
     expect(bookingSchema.safeParse({ ...valid, customerEmail: "bad" }).success).toBe(false);
+  });
+});
+
+describe("publicCodeSchema", () => {
+  it("accepts a valid UUID public code", () => {
+    expect(publicCodeSchema.safeParse("65925dbb-ab9d-42eb-832a-030c1b28d1e4").success).toBe(true);
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(publicCodeSchema.safeParse("  65925dbb-ab9d-42eb-832a-030c1b28d1e4  ").success).toBe(true);
+  });
+
+  it("rejects a non-uuid string", () => {
+    expect(publicCodeSchema.safeParse("not-a-uuid").success).toBe(false);
+  });
+
+  it("rejects an empty code", () => {
+    expect(publicCodeSchema.safeParse("").success).toBe(false);
   });
 });
 

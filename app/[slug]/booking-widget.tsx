@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { createBooking } from "@/lib/booking/actions";
 import { getSlotsForDate } from "@/lib/availability/actions";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,8 @@ export function BookingWidget({
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReady, setTurnstileReady] = useState(true);
 
   const [isPending, startTransition] = useTransition();
 
@@ -104,6 +107,7 @@ export function BookingWidget({
       customerPhone,
       customerEmail: customerEmail || undefined,
       customerNote: customerNote || undefined,
+      cfTurnstileToken: turnstileToken || undefined,
     });
     setSubmitting(false);
     if (result.ok && result.publicCode) {
@@ -247,7 +251,9 @@ export function BookingWidget({
           </label>
         </div>
 
-        <Button type="submit" className="w-full" disabled={submitting || !slot || !consent}>
+        <TurnstileWidget onToken={setTurnstileToken} onState={setTurnstileReady} />
+
+        <Button type="submit" className="w-full" disabled={submitting || !slot || !consent || !turnstileReady}>
           {submitting ? "Confirmando..." : "Confirmar reserva"}
         </Button>
       </form>

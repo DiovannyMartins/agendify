@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { CheckCircle2, CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 async function ConfirmationContent({ code, slug }: { code: string; slug: string }) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.rpc("get_booking_by_public_code", { p_code: code });
 
   const booking = data?.[0];
@@ -53,9 +53,14 @@ async function ConfirmationContent({ code, slug }: { code: string; slug: string 
         <p className="mt-4 text-xs text-muted-foreground">
           Guarde o código <Badge variant="secondary">{code}</Badge>
         </p>
-        <Link href={`/${slug}`} className="mt-6 inline-block text-sm font-medium hover:underline">
-          ← Fazer outra reserva
-        </Link>
+        <div className="mt-6 flex flex-col gap-2 text-sm font-medium">
+          <Link href={`/${slug}`} className="hover:underline">
+            ← Fazer outra reserva
+          </Link>
+          <Link href={`/${slug}/consultar`} className="text-muted-foreground hover:underline">
+            Consultar reserva por código
+          </Link>
+        </div>
       </div>
     </div>
   );

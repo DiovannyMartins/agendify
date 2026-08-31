@@ -3,6 +3,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation/schemas";
 import {
+  lookupBookingByPublicCode,
+  toConsultState,
+  type ConsultState,
+} from "@/lib/bookings/lookup";
+import {
   computeAvailableSlots,
   localDayRangeUtc,
   toUtcRange,
@@ -11,7 +16,7 @@ import {
   type SlotInterval,
   type UtcRange,
 } from "@/lib/booking/availability";
-import { enforceRateLimit, getClientIp } from "@/lib/booking/rate-limit";
+import { enforceRateLimit, enforceConsultRateLimit, getClientIp } from "@/lib/booking/rate-limit";
 import { verifyTurnstile } from "@/lib/booking/anti-bot";
 
 export type ActionResult = { ok: boolean; code?: string; message?: string; publicCode?: string };
@@ -138,6 +143,51 @@ export async function createBooking(input: {
   }
 
   return { ok: true, publicCode: data?.public_code };
+}
+
+// Public consultation of a reservation by its public code. Uses the cookie-based
+// server client (anon role) — the lookup RPC is granted to anon. The result
+// carries only non-personal data (service, date/time, business contact). Gated by
+// a per-IP rate limit and the optional Turnstile anti-bot check (fail-open).
+export async function consultBooking(
+  _prev: ConsultState,
+  formData: FormData,
+): Promise<ConsultState> {
+  const code = String(formData.get("code") ?? "");
+  const turnstileToken = String(formData.get("cfTurnstileToken") ?? "");
+  const gate = await verifyTurnstile(turnstileToken || undefined);
+  if (!gate.ok) {
+    return { status: "error", code: "CAPTCHA", message: "Verificação humana falhou. Tente novamente." };
+  }
+
+  const supabase = createAdminClient();
+
+  const ip = await getClientIp();
+  // Fail-open on the limiter: a transient DB error during a public lookup should
+  // not block a legitimate consultation, unlike the reservation flow where the
+  // limiter is fail-closed.
+  let allowed: boolean;
+  try {
+    allowed = await enforceConsultRateLimit(supabase, ip);
+  } catch {
+    allowed = true;
+  }
+  if (!allowed) {
+    return {
+      status: "error",
+      code: "RATE_LIMITED",
+      message: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    };
+  }
+
+  const result = await lookupBookingByPublicCode(
+    async (c) => {
+      const { data, error } = await supabase.rpc("get_booking_by_public_code", { p_code: c });
+      return { data: data?.[0] ?? null, error };
+    },
+    code,
+  );
+  return toConsultState(result);
 }
 
 type SlotRange = {

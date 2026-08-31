@@ -285,22 +285,34 @@ describe("anon data exposure (§36)", () => {
   });
 });
 
-describe("public lookup still works (§48) and returns no PII", () => {
-  it("anon can resolve a public_code", async () => {
+describe("public lookup goes through the server layer (§16) and returns no PII", () => {
+  let publicCode = "";
+
+  it("anon CANNOT call the SECURITY DEFINER lookup directly (hardened)", async () => {
     const { data: created } = await admin.rpc(
       "create_booking",
       bookingArgs(businessA, activeServiceA, "2099-02-11T09:00:00.000Z", `+551191${stamp}`),
     );
+    publicCode = created!.public_code;
     const anon = anonClient();
-    const { data, error } = await anon.rpc("get_booking_by_public_code", {
-      p_code: created!.public_code,
+    const { error } = await anon.rpc("get_booking_by_public_code", {
+      p_code: publicCode,
     });
-    expect(error).toBeNull();
-    expect(data?.[0]).toBeDefined();
-    expect(data?.[0]).not.toHaveProperty("customer_name_snapshot");
-    expect(data?.[0]).not.toHaveProperty("customer_phone_snapshot");
-    expect(data?.[0]).not.toHaveProperty("customer_email_snapshot");
-    expect(data?.[0]).not.toHaveProperty("owner_id");
+    // §0016: the capability endpoint is revoked from anon/authenticated; all
+    // public access must flow through the Next.js server (service role).
+    expect(error).not.toBeNull();
+    expect(String(error?.message ?? "").toLowerCase()).toMatch(/permission denied|function/i);
+  });
+
+  it("the service-role resolution returns no PII", async () => {
+    const { data: row } = await admin.rpc("get_booking_by_public_code", {
+      p_code: publicCode,
+    });
+    expect(row?.[0]).toBeDefined();
+    expect(row?.[0]).not.toHaveProperty("customer_name_snapshot");
+    expect(row?.[0]).not.toHaveProperty("customer_phone_snapshot");
+    expect(row?.[0]).not.toHaveProperty("customer_email_snapshot");
+    expect(row?.[0]).not.toHaveProperty("owner_id");
   });
 });
 

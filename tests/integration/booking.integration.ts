@@ -128,6 +128,47 @@ describe("createBooking RPC (§11.4)", () => {
     expect(error).not.toBeNull();
     expect(String(error?.message).toLowerCase()).toMatch(/overlap|already|reserved|slash/i);
   });
+
+  it("public lookup exposes only non-personal data and no status (§16)", async () => {
+    const { data: booking } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2099-01-05T14:30:00.000Z",
+      p_customer_name: "Cliente Sigiloso",
+      p_customer_phone: "+5511955555555",
+    });
+    const code = booking!.public_code;
+    // The cookie-based server client isn't available in this process, so exercise
+    // the lookup through the identical anon RPC it wraps.
+    const { data: row } = await admin.rpc("get_booking_by_public_code", { p_code: code });
+    const lo = row?.[0];
+    expect(typeof lo?.service_name).toBe("string");
+    expect(lo?.business_slug).toContain("biz-integracao");
+    expect(lo?.business_timezone).toBe("America/Sao_Paulo");
+    // The public code must never authorize customer personal data.
+    expect(Object.keys(lo ?? {}).sort()).toEqual(
+      ["business_name", "business_phone", "business_slug", "business_timezone", "end_at", "service_name", "start_at"].sort(),
+    );
+  });
+
+  it("the consultation rate limit is keyed per IP and separate from bookings (§16)", async () => {
+    const ip = `1.2.3.${stamp}`;
+    const key = `ip:${ip}|consult`;
+    const limit = 3;
+    const windowSeconds = 3600;
+    const results: boolean[] = [];
+    for (let i = 0; i < limit + 2; i++) {
+      const { data } = await admin.rpc("check_booking_rate_limit", {
+        p_key: key,
+        p_limit: limit,
+        p_window_seconds: windowSeconds,
+      });
+      results.push(data === true);
+    }
+    // First `limit` calls allowed, then blocked.
+    expect(results.slice(0, limit)).toEqual([true, true, true]);
+    expect(results[limit]).toBe(false);
+  });
 });
 
 describe("RLS (§13.2)", () => {

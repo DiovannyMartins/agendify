@@ -11,6 +11,9 @@ const PASSWORD = "senha12345";
 const stamp = Date.now().toString().slice(-8);
 const EMAIL = `e2e.${stamp}@agendify.dev`;
 const SLUG = `e2e-barbearia-${stamp}`;
+// The public code captured from the confirmation screen in test 1, reused by
+// the consultation test that follows (serial mode).
+let publicCode = "";
 
 test.describe.configure({ mode: "serial" });
 
@@ -73,14 +76,17 @@ test("public booking flow: reserve, confirm in dashboard, release on cancel", as
   await slotButton.waitFor({ state: "visible" });
   await slotButton.click();
 
-  await page.getByLabel("Nome").fill("Cliente E2E");
-  await page.getByLabel("Telefone / WhatsApp").fill("+5511977777777");
+  await page.getByRole("textbox", { name: "Nome" }).fill("Cliente E2E");
+  await page.getByRole("textbox", { name: "Telefone / WhatsApp" }).fill("+5511977777777");
   await page.getByRole("checkbox", { name: /Autorizo o tratamento dos meus dados/ }).check();
   await page.getByRole("button", { name: "Confirmar reserva" }).click();
 
   // 2. Confirmation screen (no personal data beyond service/date/business contact).
   await page.waitForURL(/\/confirmacao\?code=/);
   await expect(page.getByText("Reserva confirmada!")).toBeVisible();
+  const confUrl = new URL(page.url());
+  publicCode = confUrl.searchParams.get("code")!;
+  expect(publicCode).toMatch(/^[0-9a-f-]{36}$/i);
 
   // 3. Log in as owner and check the dashboard lists the booking.
   await page.goto(`${BASE_URL}/login`);
@@ -96,4 +102,29 @@ test("public booking flow: reserve, confirm in dashboard, release on cancel", as
   await page.getByRole("button", { name: "Cancelar" }).first().click();
   await page.getByRole("button", { name: "Confirmar cancelamento" }).click();
   await expect(page.getByText("Cancelada")).toBeVisible();
+});
+
+test("public consultation shows the booking by code", async ({ page }) => {
+  // 1. Open the public consultation page and enter the code captured earlier.
+  await page.goto(`${BASE_URL}/${SLUG}/consultar`);
+  await expect(page.getByRole("heading", { name: "Consultar reserva" })).toBeVisible();
+  await page.getByLabel("Código da reserva").fill(publicCode);
+  await page.getByRole("button", { name: "Consultar" }).click();
+
+  // 2. The booking (service + business contact) is shown; no customer data.
+  await expect(page.getByText("Reserva encontrada")).toBeVisible();
+  await expect(page.getByText("Corte")).toBeVisible();
+  await expect(page.getByText("Barbearia E2E")).toBeVisible();
+  await expect(page.getByText("Cliente E2E")).toHaveCount(0);
+
+  // 3. An invalid code surfaces a friendly error.
+  await page.getByRole("button", { name: "Consultar outra reserva" }).click();
+  await page.getByLabel("Código da reserva").fill("not-a-uuid");
+  await page.getByRole("button", { name: "Consultar" }).click();
+  await expect(page.getByText("Informe um código de reserva válido.")).toBeVisible();
+
+  // 4. An unknown code reports not found.
+  await page.getByLabel("Código da reserva").fill("ffffffff-ffff-ffff-ffff-ffffffffffff");
+  await page.getByRole("button", { name: "Consultar" }).click();
+  await expect(page.getByText("Nenhuma reserva encontrada com esse código.")).toBeVisible();
 });

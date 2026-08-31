@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BookingWidget } from "./booking-widget";
 import { CalendarClock } from "lucide-react";
@@ -49,6 +50,13 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
             priceCents: s.price_cents,
           }))}
         />
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Já tem uma reserva?{" "}
+          <Link href={`/${slug}/consultar`} className="font-medium text-foreground hover:underline">
+            Consultar reserva
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { RATE_LIMIT, buildRateKeys, enforceRateLimit } from "@/lib/booking/rate-limit";
+import {
+  CONSULT_RATE_LIMIT,
+  RATE_LIMIT,
+  buildRateKeys,
+  enforceConsultRateLimit,
+  enforceRateLimit,
+} from "@/lib/booking/rate-limit";
 import type { Database } from "@/lib/supabase/database-types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -48,5 +54,28 @@ describe("enforceRateLimit", () => {
   it("propagates an RPC error", async () => {
     const client = { rpc: vi.fn(async () => ({ data: null, error: new Error("boom") })) } as unknown as SupabaseClient<Database>;
     await expect(enforceRateLimit(client, "1.2.3.4", "biz-1")).rejects.toThrow("boom");
+  });
+});
+
+describe("enforceConsultRateLimit (§16 lookup)", () => {
+  it("keys only on the client IP, separate from reservation counters", async () => {
+    const rpc = vi.fn(async (_name: string, { p_key, p_limit }: { p_key: string; p_limit: number }) => {
+      expect(p_key).toBe("ip:1.2.3.4|consult");
+      expect(p_limit).toBe(CONSULT_RATE_LIMIT.perIp.limit);
+      return { data: true, error: null };
+    });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+    await expect(enforceConsultRateLimit(client, "1.2.3.4")).resolves.toBe(true);
+  });
+
+  it("blocks once the per-IP window is exceeded", async () => {
+    const rpc = vi.fn(async () => ({ data: false, error: null }));
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+    await expect(enforceConsultRateLimit(client, "1.2.3.4")).resolves.toBe(false);
+  });
+
+  it("propagates an RPC error", async () => {
+    const client = { rpc: vi.fn(async () => ({ data: null, error: new Error("boom") })) } as unknown as SupabaseClient<Database>;
+    await expect(enforceConsultRateLimit(client, "1.2.3.4")).rejects.toThrow("boom");
   });
 });

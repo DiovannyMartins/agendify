@@ -105,3 +105,8 @@ export type BookingInput = z.infer<typeof bookingSchema>;
 
 export const bookingStatusSchema = z.enum(["confirmed", "completed", "cancelled", "no_show"]);
 export type BookingStatus = z.infer<typeof bookingStatusSchema>;
+
+// Public reservation code. The code is a UUID used only on the public
+// confirmation screen; it must never authorize access to customer data.
+export const publicCodeSchema = z.string().trim().uuid("Informe um código de reserva válido.");
+export type PublicCodeInput = z.infer<typeof publicCodeSchema>;
