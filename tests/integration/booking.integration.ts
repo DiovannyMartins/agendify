@@ -148,4 +148,27 @@ describe("block vs future booking conflict (§9.4)", () => {
     expect(error).not.toBeNull();
     expect(String(error?.message).toLowerCase()).toMatch(/overlap|book|block|conflit/i);
   });
+
+  it("owner cannot create a booking overlapping an existing block", async () => {
+    const owner = await anonClientForUser(EMAIL, PASSWORD);
+    // A block on a day with no existing booking; this insert must succeed.
+    const { error: blockErr } = await owner.from("availability_blocks").insert({
+      business_id: businessId,
+      start_at: "2099-01-07T10:00:00.000Z",
+      end_at: "2099-01-07T12:00:00.000Z",
+      reason: "bloqueio teste",
+    });
+    expect(blockErr).toBeNull();
+    // create_booking is service_role-only, so call it through the admin client;
+    // the bookings trigger must reject a booking that falls inside the block.
+    const { error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2099-01-07T10:30:00.000Z",
+      p_customer_name: "Outro Cliente",
+      p_customer_phone: "+5511966666666",
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/overlap|book|block|conflit/i);
+  });
 });
