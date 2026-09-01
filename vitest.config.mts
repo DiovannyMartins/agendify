@@ -28,6 +28,10 @@ export default defineConfig({
           include: ["tests/integration/**/*.integration.ts"],
           testTimeout: 60_000,
           hookTimeout: 60_000,
+          // Integration files share the remote project; running them in parallel
+          // triggers a transient `businesses_owner_id_fkey` race on setup. Serial
+          // file execution makes the suite deterministic.
+          fileParallelism: false,
         },
       },
     ],
