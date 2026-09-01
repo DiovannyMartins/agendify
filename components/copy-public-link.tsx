@@ -4,23 +4,15 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Link2 } from "lucide-react";
 
-// Copies the business's public booking link to the clipboard (with a Web Share
-// fallback on browsers that support it, e.g. mobile). Shows transient feedback
-// so the owner knows the link was shared — the earlier "Compartilhar link" entry
-// just navigated to settings without ever sharing anything.
+// Copies the business's public booking link to the clipboard. The earlier
+// version tried the Web Share API first, but on desktop the native share sheet
+// can fail with "could not show all share methods", so we copy instead — the
+// reliable behaviour for a "Compartilhar link" action.
 export function CopyPublicLink({ slug, children }: { slug: string; children: ReactNode }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     const url = `${window.location.origin}/${slug}`;
-    if (navigator.share && typeof navigator.share === "function") {
-      try {
-        await navigator.share({ url, title: "Agendamento" });
-        return;
-      } catch {
-        // user cancelled or share unsupported: fall through to clipboard
-      }
-    }
     try {
       await navigator.clipboard.writeText(url);
     } catch {
