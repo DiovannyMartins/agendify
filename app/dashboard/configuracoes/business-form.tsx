@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -32,9 +33,12 @@ export function BusinessForm({
 }: {
   initial?: Partial<Record<string, unknown>> | null;
 }) {
+  const router = useRouter();
   const [state, setState] = useState<ActionResult>(INITIAL);
+  const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const slug = typeof initial?.slug === "string" ? initial.slug : "";
+  const creating = !slug;
 
   const {
     register,
@@ -66,7 +70,12 @@ export function BusinessForm({
       fd.set("minNoticeMinutes", String(values.minNoticeMinutes));
       fd.set("bookingWindowDays", String(values.bookingWindowDays));
       fd.set("description", values.description ?? "");
-      setState(await upsertBusiness(INITIAL, fd));
+      const result = await upsertBusiness(INITIAL, fd);
+      setState(result);
+      setSubmitted(true);
+      if (result.ok && creating) {
+        router.push("/dashboard");
+      }
     });
   }
 
@@ -94,7 +103,7 @@ export function BusinessForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Endereço público (slug)</Label>
-              <Input id="slug" placeholder="minha-barbearia" {...register("slug")} />
+              <Input id="slug" placeholder="minha-barbearia" autoComplete="off" {...register("slug")} />
               <p className="text-xs text-muted-foreground">
                 Apenas minúsculas, números e hífen. Seu link: agendify.app/{slug || "seu-slug"}
               </p>
@@ -206,6 +215,14 @@ export function BusinessForm({
             </div>
           </div>
 
+          {state.ok && submitted && !creating && (
+            <p className="text-sm text-emerald-600">Alterações salvas com sucesso.</p>
+          )}
+          {state.ok && submitted && creating && (
+            <p className="text-sm text-emerald-600">
+              Negócio criado! Redirecionando para o seu painel...
+            </p>
+          )}
           {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}
 
           <Button type="submit" disabled={pending}>
