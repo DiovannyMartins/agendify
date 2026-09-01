@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -87,10 +88,13 @@ export default function MarketingHome() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 -z-10">
-          <img
+          <Image
             src="/images/hero.png"
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-background/70" />
           <div className="absolute left-1/2 top-[-20%] h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-primary/10 blur-[140px] motion-safe:animate-glow-drift" />
