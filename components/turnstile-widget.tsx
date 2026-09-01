@@ -117,7 +117,9 @@ export const TurnstileWidget = memo(function TurnstileWidget({
       try {
         const id = window.turnstile.render(el, {
           sitekey,
-          theme: "light",
+          // Site is dark-only (see globals.css :root), so render the challenge
+          // in dark to match the background instead of defaulting to light.
+          theme: "dark",
           callback: (token) => {
             widgetIdRef.current = id;
             setError(false);
