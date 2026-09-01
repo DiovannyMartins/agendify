@@ -4,7 +4,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, CalendarDays, Blocks } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CopyPublicLink } from "@/components/copy-public-link";
 import { getCurrentBusiness } from "@/lib/business/queries";
 
 export default async function DashboardHome() {
@@ -25,12 +24,9 @@ export default async function DashboardHome() {
             </Link>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <CopyPublicLink slug={business.slug}>Compartilhar link</CopyPublicLink>
-          <Link href={publicUrl} className={cn(buttonVariants({ variant: "outline" }))}>
-            Ver página pública
-          </Link>
-        </div>
+        <Link href={publicUrl} className={cn(buttonVariants({ variant: "outline" }))}>
+          Ver página pública
+        </Link>
       </header>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
