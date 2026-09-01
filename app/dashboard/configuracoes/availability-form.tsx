@@ -14,13 +14,13 @@ import {
 import { setAvailability, deleteAvailability, type ActionResult } from "@/lib/availability/actions";
 
 export const WEEKDAYS: { value: number; label: string }[] = [
-  { value: 1, label: "Segunda" },
-  { value: 2, label: "Terça" },
-  { value: 3, label: "Quarta" },
-  { value: 4, label: "Quinta" },
-  { value: 5, label: "Sexta" },
-  { value: 6, label: "Sábado" },
-  { value: 7, label: "Domingo" },
+  { value: 1, label: "1 - Domingo" },
+  { value: 2, label: "2 - Segunda" },
+  { value: 3, label: "3 - Terça" },
+  { value: 4, label: "4 - Quarta" },
+  { value: 5, label: "5 - Quinta" },
+  { value: 6, label: "6 - Sexta" },
+  { value: 7, label: "7 - Sábado" },
 ];
 
 const INITIAL = { ok: true } as ActionResult;
@@ -33,7 +33,7 @@ export function AvailabilityForm() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="weekday">Dia da semana</Label>
-          <Select name="weekday" defaultValue="1">
+          <Select name="weekday" defaultValue="2">
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

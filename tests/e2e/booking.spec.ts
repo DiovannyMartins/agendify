@@ -48,7 +48,7 @@ test.beforeAll(async () => {
     duration_minutes: 30,
     price_cents: 4000,
   });
-  // Availability for every weekday (1-7, ISO Monday=1..Sunday=7), 08:00-18:00,
+  // Availability for every weekday (1-7, 1=Domingo..7=Sábado), 08:00-18:00,
   // so any date has slots.
   for (let wd = 1; wd <= 7; wd++) {
     await admin.from("availability").insert({

@@ -132,13 +132,15 @@ export function localDayRangeUtc(date: string, timezone: string): { start: strin
   return { start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() };
 }
 
-// Weekday of a business-local date (ISO yyyy-mm-dd), as 1=Mon..7=Sun (ISO 8601).
+// Weekday of a business-local date (ISO yyyy-mm-dd), as 1=Sun..7=Sat.
+// Mirrors JS Date.getDay()+1, which is the convention the availability form
+// exposes (1 - Domingo, 2 - Segunda, ... 7 - Sábado).
 export function weekdayOf(date: string, timezone: string): number {
   const short = new Intl.DateTimeFormat("en-US", { timeZone: timezone, weekday: "short" }).format(
     new Date(`${date}T12:00:00Z`),
   );
   const map: Record<string, number> = {
-    Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
+    Sun: 1, Mon: 2, Tue: 3, Wed: 4, Thu: 5, Fri: 6, Sat: 7,
   };
   return map[short] ?? 1;
 }
