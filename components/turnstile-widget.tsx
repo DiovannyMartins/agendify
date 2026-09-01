@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import Script from "next/script";
 
 declare global {
   interface Window {
@@ -19,6 +18,53 @@ declare global {
       reset: (widgetId?: string) => void;
     };
   }
+}
+
+const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+// Load Cloudflare's api.js exactly once per page, guarded by a module-level
+// promise. Loading it more than once is actively harmful: Turnstile's loader
+// replaces `window.turnstile` (a placeholder) with the real API only on the
+// first execution. A second execution logs "Turnstile already has been loaded"
+// and leaves `window.turnstile.render` permanently undefined, so the widget
+// would time out into the "Não foi possível carregar a verificação" error.
+let turnstileLoadPromise: Promise<void> | null = null;
+
+function loadTurnstile(): Promise<void> {
+  // Already booted to the real API -> nothing to do.
+  if (typeof window.turnstile?.render === "function") return Promise.resolve();
+  // An injection is already in flight -> reuse it.
+  if (turnstileLoadPromise) return turnstileLoadPromise;
+
+  turnstileLoadPromise = new Promise<void>((resolve, reject) => {
+    const onError = () => {
+      // Allow a later "Tentar novamente" to re-attempt the load.
+      turnstileLoadPromise = null;
+      reject(new Error("Failed to load the Turnstile api.js"));
+    };
+
+    // A script tag from a previous mount / client navigation may already exist.
+    // Never inject a second one (that is what triggers the broken double-load).
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src*="challenges.cloudflare.com/turnstile/v0/api.js"]',
+    );
+    if (existing) {
+      if (typeof window.turnstile?.render === "function") return resolve();
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", onError, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = TURNSTILE_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = onError;
+    document.head.appendChild(script);
+  });
+
+  return turnstileLoadPromise;
 }
 
 // Cloudflare Turnstile anti-bot widget (§17). Renders the challenge only when a
@@ -45,7 +91,7 @@ export const TurnstileWidget = memo(function TurnstileWidget({
   const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
-  const [attempt, setAttempt] = useState(0);
+  const [retry, setRetry] = useState(0);
   const [error, setError] = useState(false);
   const [resolved, setResolved] = useState(false);
 
@@ -65,7 +111,9 @@ export const TurnstileWidget = memo(function TurnstileWidget({
 
     const render = () => {
       const el = containerRef.current;
-      if (!el || !sitekey || !window.turnstile?.render) return false;
+      // `window.turnstile` may briefly be the loader's placeholder object before
+      // `render` is installed; only proceed once it is a real function.
+      if (!el || typeof window.turnstile?.render !== "function") return false;
       try {
         const id = window.turnstile.render(el, {
           sitekey,
@@ -93,19 +141,27 @@ export const TurnstileWidget = memo(function TurnstileWidget({
       return true;
     };
 
-    const attempt = () => {
+    const run = () => {
       if (cancelled) return;
       if (render()) {
         if (onState) onState(true);
         return;
       }
-      if (polls++ < 50) window.setTimeout(attempt, 200);
-      else {
+      if (polls++ < 50) {
+        window.setTimeout(run, 200);
+      } else {
         setError(true);
         if (onState) onState(false);
       }
     };
-    attempt();
+
+    loadTurnstile()
+      .then(run)
+      .catch(() => {
+        if (cancelled) return;
+        setError(true);
+        if (onState) onState(false);
+      });
 
     return () => {
       cancelled = true;
@@ -118,15 +174,17 @@ export const TurnstileWidget = memo(function TurnstileWidget({
         }
       }
     };
-  }, [sitekey, onToken, onState, attempt]);
+  }, [sitekey, onToken, onState, retry]);
 
-  // Retry: bump the attempt counter to re-run the effect (re-render the widget).
-  const retry = useCallback(() => {
+  // Retry: bump the counter to re-run the effect (re-render the challenge). If
+  // the script failed to load we also clear the cached promise via the
+  // rejection path in loadTurnstile, so this genuinely re-attempts.
+  const retryChallenge = useCallback(() => {
     setError(false);
     setResolved(false);
     onToken("");
     if (onState) onState(false);
-    setAttempt((a) => a + 1);
+    setRetry((r) => r + 1);
   }, [onToken, onState]);
 
   if (!sitekey) {
@@ -135,19 +193,13 @@ export const TurnstileWidget = memo(function TurnstileWidget({
 
   return (
     <>
-      <Script
-        id="turnstile"
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        strategy="afterInteractive"
-        onError={() => setError(true)}
-      />
       <div ref={containerRef} className="flex justify-center py-2" data-testid="turnstile-widget" />
       {error && (
         <div className="flex flex-col items-center gap-2">
           <p className="text-sm text-destructive">Não foi possível carregar a verificação.</p>
           <button
             type="button"
-            onClick={retry}
+            onClick={retryChallenge}
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
             Tentar novamente
