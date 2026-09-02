@@ -44,7 +44,7 @@ next-env.d.ts
 .dev.log
 .dev.err.log
 
-# AI agents and skills (never committed)
+# AI agents and skills (untracked by default)
 .agents/
 .claude/
 .cursor/

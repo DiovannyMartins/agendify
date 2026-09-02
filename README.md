@@ -14,7 +14,6 @@ Plataforma SaaS de agendamento online para profissionais e pequenos negócios. O
 - [Funcionalidades](#funcionalidades)
 - [Stack](#stack)
 - [Arquitetura e fluxo de dados](#arquitetura-e-fluxo-de-dados)
-- [Começando](#comeando)
 - [Executando localmente](#executando-localmente)
 - [Testes, lint e typecheck](#testes-lint-e-typecheck)
 - [Modelo de banco e migrations](#modelo-de-banco-e-migrations)
@@ -29,13 +28,13 @@ Plataforma SaaS de agendamento online para profissionais e pequenos negócios. O
 
 - **Página pública por slug** (`/[slug]`): o cliente escolhe serviço, data e horário sem criar conta.
 - **Disponibilidade inteligente**: janela futura, antecedência mínima e intervalo de slots configuráveis por negócio.
-- **Morning server-side**: revalidação atômica da disponibilidade no servidor, protegida contra sobreposições.
-- **Dashboard do profissional**: gere negócio, serviços, disponibilidade e reservas, com blocos/manutenções de agenda.
+- **Validação server-side**: revalidação atômica da disponibilidade no servidor, protegida contra sobreposições.
+- **Dashboard do profissional**: gerencie negócio, serviços, disponibilidade e reservas, com blocos/manutenções de agenda.
 - **Timezone IANA por negócio**: datas armazenadas em UTC e exibidas no fuso local do estabelecimento.
 - **Anti-bot**: gate de Cloudflare Turnstile no fluxo público de reserva.
 - **Histórico estável**: snapshots de serviço (nome, preço, duração) preservam o histórico da reserva.
 
-
+> Especificação de produto e implementação: `documento-projeto.md` (fonte de verdade do MVP).
 
 ## Stack
 
