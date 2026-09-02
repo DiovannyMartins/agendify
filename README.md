@@ -2,11 +2,40 @@
 
 Plataforma SaaS de agendamento online para profissionais e pequenos negócios. O profissional configura seu negócio, serviços e disponibilidade; clientes reservam serviços pela página pública, sem precisar de conta.
 
-## Visão geral
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06b6d4?logo=tailwindcss&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3fcf8e?logo=supabase&logoColor=black)
+![Vitest](https://img.shields.io/badge/Vitest-4-6e9f18?logo=vitest&logoColor=white)
 
-O Agendify gera uma página pública por slug (`/[slug]`). O cliente escolhe serviço, data e horário; o servidor revalida a disponibilidade e cria a reserva de forma atômica. O profissional acompanha tudo no dashboard.
+## Índice
 
-> Especificação de produto e implementação: `documento-projeto.md` (fonte de verdade do MVP).
+- [Funcionalidades](#funcionalidades)
+- [Stack](#stack)
+- [Arquitetura e fluxo de dados](#arquitetura-e-fluxo-de-dados)
+- [Começando](#comeando)
+- [Executando localmente](#executando-localmente)
+- [Testes, lint e typecheck](#testes-lint-e-typecheck)
+- [Modelo de banco e migrations](#modelo-de-banco-e-migrations)
+- [Configurando o Supabase](#configurando-o-supabase)
+- [Variáveis de ambiente](#variveis-de-ambiente)
+- [Principais decisões técnicas](#principais-decisoes-tecnicas)
+- [Deploy](#deploy)
+- [Estado](#estado)
+- [Produção](#producao)
+
+## Funcionalidades
+
+- **Página pública por slug** (`/[slug]`): o cliente escolhe serviço, data e horário sem criar conta.
+- **Disponibilidade inteligente**: janela futura, antecedência mínima e intervalo de slots configuráveis por negócio.
+- **Morning server-side**: revalidação atômica da disponibilidade no servidor, protegida contra sobreposições.
+- **Dashboard do profissional**: gere negócio, serviços, disponibilidade e reservas, com blocos/manutenções de agenda.
+- **Timezone IANA por negócio**: datas armazenadas em UTC e exibidas no fuso local do estabelecimento.
+- **Anti-bot**: gate de Cloudflare Turnstile no fluxo público de reserva.
+- **Histórico estável**: snapshots de serviço (nome, preço, duração) preservam o histórico da reserva.
+
+
 
 ## Stack
 
@@ -38,52 +67,7 @@ Navegador -> Next.js (UI)
 - O fluxo público de reserva usa uma RPC (`create_booking`) server-only, que grava customer + booking atomicamente.
 - A confirmação pública é mediada por `public_code`, nunca por dados do cliente.
 
-## Modelo de banco e migrations
-
-As migrations vivem em `supabase/migrations/` e são versionadas na ordem da spec (§20.4):
-
-1. **0001** extensões (`btree_gist`, `pgcrypto`) + enum `booking_status`
-2. **0002** `profiles` e `businesses`
-3. **0003** `services`, `availability`, `availability_blocks`, `customers`, `bookings`
-4. **0004** índices, CHECKs, UNIQUEs e a **exclusion constraint** anti-sobreposição
-5. **0005** triggers de `updated_at` + RPC transacional `create_booking`
-6. **0006** RLS e policies (§13.2)
-7. **0007** função pública de consulta por `public_code`
-
-Aplicar no Supabase:
-
-```bash
-supabase db push --db-url "postgresql://postgres.<ref>:<senha>@<host>.pooler.supabase.com:6543/postgres"
-```
-
-Gerar os tipos tipados:
-
-```bash
-supabase gen types typescript --db-url "<db-url>" --schema public > lib/supabase/database-types.ts
-```
-
-## Como configurar o Supabase
-
-1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
-2. Em **Project Settings → API**, copie a URL e as chaves `sb_publishable_...` e `sb_secret_...`.
-3. Em **Authentication → Sign In / Up → Email**, habilite/desabilite "Confirm email" conforme o ambiente.
-4. Em **Authentication → URL Configuration**, defina Site URL (`http://localhost:3000` em dev) e adicione as Redirect URLs (`http://localhost:3000/**`, `http://localhost:3000/auth/callback`).
-
-## Variáveis de ambiente
-
-Copie `.env.example` para `.env.local` e preencha:
-
-| Variável | Exposição | Uso |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Client/Server | URL do projeto Supabase |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Client/Server | Chave publishable (`sb_publishable_...`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Somente Server | Operações públicas controladas (`sb_secret_...`) |
-| `APP_URL` | Somente Server | URL base para redirects de e-mail (preferido) |
-| `NEXT_PUBLIC_APP_URL` | Client/Server | Fallback; use `APP_URL` no servidor |
-
-> A service role **nunca** deve aparecer no bundle do navegador, em variável `NEXT_PUBLIC_`, no repositório Git ou em logs públicos.
-
-## Como executar localmente
+## Executando localmente
 
 ```bash
 npm install
@@ -101,9 +85,56 @@ npm run lint
 npm run typecheck
 ```
 
-- **Unitários** (`lib/**`) : algoritmo de disponibilidade, Zod schemas, transições de status.
+- **Unitários** (`lib/**`): algoritmo de disponibilidade, Zod schemas, transições de status.
 - **Integração**: concorrência de reservas, RLS, snapshots, bloqueio vs reserva.
 - **E2E**: fluxo público de reserva e redirecionamentos de auth.
+
+## Modelo de banco e migrations
+
+As migrations vivem em `supabase/migrations/` e são aplicadas em ordem, seguindo a especificação (§20.4) e refinamentos posteriores:
+
+- **0001** — extensões (`btree_gist`, `pgcrypto`) e enum `booking_status`
+- **0002** — `profiles` e `businesses`
+- **0003** — `services`, `availability`, `availability_blocks`, `customers`, `bookings`
+- **0004** — índices, CHECKs, UNIQUEs e a **exclusion constraint** anti-sobreposição
+- **0005** — triggers de `updated_at` + RPC transacional `create_booking`
+- **0006** — RLS e policies (§13.2)
+- **0007–0016** — consulta pública por `public_code`, políticas de leitura pública, RPC `lookup` para `anon`, timezone do fluxo público, regras anti-sobreposição dos blocos, endurecimento de segurança da `create_booking`, `security invoker`, `search_path` dos triggers e revogação das RPCs públicas
+
+Aplicar no Supabase:
+
+```bash
+supabase db push --db-url "postgresql://postgres.<ref>:<senha>@<host>.pooler.supabase.com:6543/postgres"
+```
+
+Gerar os tipos tipados:
+
+```bash
+supabase gen types typescript --db-url "<db-url>" --schema public > lib/supabase/database-types.ts
+```
+
+## Configurando o Supabase
+
+1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
+2. Em **Project Settings → API**, copie a URL e as chaves `sb_publishable_...` e `sb_secret_...`.
+3. Em **Authentication → Sign In / Up → Email**, habilite/desabilite "Confirm email" conforme o ambiente.
+4. Em **Authentication → URL Configuration**, defina Site URL (`http://localhost:3000` em dev) e adicione as Redirect URLs (`http://localhost:3000/**`, `http://localhost:3000/auth/callback`).
+
+## Variáveis de ambiente
+
+Copie `.env.example` para `.env.local` e preencha:
+
+| Variável | Exposição | Uso |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Client/Server | URL do projeto Supabase |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Client/Server | Chave publishable (`sb_publishable_...`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Somente Server | Operações públicas controladas (`sb_secret_...`) |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Client | Site key pública do Cloudflare Turnstile (`0x...`) |
+| `TURNSTILE_SECRET_KEY` | Somente Server | Secret do Turnstile (`0x...`); ambas as chaves juntas ou nenhuma |
+| `APP_URL` | Somente Server | URL base para redirects de e-mail (preferido) |
+| `NEXT_PUBLIC_APP_URL` | Client/Server | Fallback; use `APP_URL` no servidor |
+
+> A service role **nunca** deve aparecer no bundle do navegador, em variável `NEXT_PUBLIC_`, no repositório Git ou em logs públicos. O Turnstile é *fail-closed*: sem ambas as chaves o widget não renderiza e o gate de anti-bot fica desativado.
 
 ## Principais decisões técnicas
 
@@ -119,7 +150,7 @@ Ver documentação da [Vercel](https://vercel.com/docs). Configure as variáveis
 
 ## Estado
 
-MVP completo (Fases 1–9 da spec). 
+MVP completo (Fases 1–9 da spec).
 
 ## Produção
 

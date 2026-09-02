@@ -43,3 +43,20 @@ next-env.d.ts
 # dev logs
 .dev.log
 .dev.err.log
+
+# AI agents and skills (never committed)
+.agents/
+.claude/
+.cursor/
+.copilot/
+.opencode/
+skills-lock.json
+AGENTS.md
+CLAUDE.md
+CONTEXT.md
+docs/agents/
+*.skills/
+*_skills/
+
+# product spec (kept local, not committed)
+documento-projeto.md
