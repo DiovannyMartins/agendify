@@ -23,6 +23,9 @@ let serviceId = "";
 let customerId = "";
 let defaultProfessionalId = "";
 let secondProfessionalId = "";
+let otherOwnerId = "";
+let otherBusinessId = "";
+let otherProfessionalId = "";
 
 beforeAll(async () => {
   admin = adminClient();
@@ -85,11 +88,54 @@ beforeAll(async () => {
     .select("*")
     .single();
   customerId = cust!.id;
+
+  // A second business (owned by another user, so businesses.owner_id stays
+  // unique) used to prove create_booking cannot bind a booking to a professional
+  // that belongs to a different business.
+  const { data: otherCreated } = await admin.auth.admin.createUser({
+    email: `other.${stamp}@agendify.dev`,
+    password: PASSWORD,
+    email_confirm: true,
+  });
+  otherOwnerId = otherCreated?.user?.id ?? "";
+  await admin.from("profiles").upsert(
+    { id: otherOwnerId, display_name: "Outro Dono" },
+    { onConflict: "id" },
+  );
+  otherBusinessId = await retryOnFk(async () => {
+    const { data: biz, error: bizErr } = await admin
+      .from("businesses")
+      .insert({
+        owner_id: otherOwnerId,
+        name: "Outra Agenda",
+        slug: `outra-agenda-${stamp}`,
+        phone: "+5511976543210",
+        timezone: "America/Sao_Paulo",
+        slot_interval_minutes: 30,
+        min_notice_minutes: 0,
+        booking_window_days: 60,
+      })
+      .select("*")
+      .single();
+    if (bizErr) throw new Error(`other business insert: ${bizErr.message}`);
+    return biz!.id;
+  });
+
+  // T01 seeded a single default professional (the other owner) for this business.
+  const { data: otherPros } = await admin
+    .from("professionals")
+    .select("id")
+    .eq("business_id", otherBusinessId)
+    .eq("is_active", true);
+  expect(otherPros).toHaveLength(1);
+  otherProfessionalId = otherPros![0].id;
 });
 
 afterAll(async () => {
   await admin.from("businesses").delete().eq("owner_id", ownerId);
+  await admin.from("businesses").delete().eq("owner_id", otherOwnerId);
   await admin.auth.admin.deleteUser(ownerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(otherOwnerId).catch(() => undefined);
 });
 
 // Direct booking insert with an explicit professional (create_booking is T03 and
@@ -192,5 +238,108 @@ describe("T02: agenda por profissional (§ADR 0006)", () => {
       .from("availability")
       .insert({ business_id: businessId, professional_id: defaultProfessionalId, weekday: 3, start_time: "08:00", end_time: "12:00" });
     expect(e2).toBeNull();
+  });
+});
+
+// T03 (ADR 0006 appendix): create_booking accepts p_professional_id and binds the
+// reservation to the chosen professional. It must keep the snapshots/public_code
+// sourced from the re-read active service, reject overlap of the SAME
+// professional (exclusion constraint), allow different professionals in the same
+// slot, and reject a professional that does not exist or belongs to another
+// business.
+describe("T03: create_booking accepts p_professional_id", () => {
+  const P1_SLOT = "2099-04-01T10:00:00.000Z"; // 10:00–10:30
+  const P1_OVERLAP = "2099-04-01T10:15:00.000Z";
+  const SHARED_SLOT = "2099-04-01T11:00:00.000Z";
+
+  it("binds the booking to the chosen professional, with correct snapshots and public_code", async () => {
+    const { data, error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: P1_SLOT,
+      p_customer_name: "Com Profissional",
+      p_customer_phone: "+55119566660001",
+      p_professional_id: secondProfessionalId,
+    });
+    expect(error).toBeNull();
+    expect(data?.professional_id).toBe(secondProfessionalId);
+    expect(data?.service_name_snapshot).toBe("Corte");
+    expect(data?.duration_minutes_snapshot).toBe(30);
+    expect(data?.price_cents_snapshot).toBe(4000);
+    expect(data?.public_code).toBeTruthy();
+  });
+
+  it("rejects overlapping slots for the same professional (per-professional exclusion)", async () => {
+    const { error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: P1_OVERLAP,
+      p_customer_name: "Conflito",
+      p_customer_phone: "+55119566660002",
+      p_professional_id: secondProfessionalId,
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/overlap|slash|already|reserved|exclusion|violat/i);
+  });
+
+  it("allows different professionals in the same slot but rejects a same-professional repeat", async () => {
+    const { data: d1, error: e1 } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: SHARED_SLOT,
+      p_customer_name: "Prof A",
+      p_customer_phone: "+55119566660003",
+      p_professional_id: defaultProfessionalId,
+    });
+    expect(e1).toBeNull();
+    expect(d1?.professional_id).toBe(defaultProfessionalId);
+
+    const { data: d2, error: e2 } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: SHARED_SLOT,
+      p_customer_name: "Prof B",
+      p_customer_phone: "+55119566660004",
+      p_professional_id: secondProfessionalId,
+    });
+    expect(e2).toBeNull();
+    expect(d2?.professional_id).toBe(secondProfessionalId);
+
+    // Same slot + same professional as d1 → rejected.
+    const { error: e3 } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: SHARED_SLOT,
+      p_customer_name: "Prof A2",
+      p_customer_phone: "+55119566660005",
+      p_professional_id: defaultProfessionalId,
+    });
+    expect(e3).not.toBeNull();
+  });
+
+  it("rejects a professional that does not exist", async () => {
+    const { error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2099-04-01T12:00:00.000Z",
+      p_customer_name: "Fantasma",
+      p_customer_phone: "+55119566660006",
+      p_professional_id: "00000000-0000-0000-0000-000000000000",
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/professional|not_found|invalid/i);
+  });
+
+  it("rejects a professional that belongs to another business", async () => {
+    const { error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2099-04-01T13:00:00.000Z",
+      p_customer_name: "Invasor",
+      p_customer_phone: "+55119566660007",
+      p_professional_id: otherProfessionalId,
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/mismatch|not_found|permission/i);
   });
 });

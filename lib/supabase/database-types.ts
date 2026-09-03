@@ -455,6 +455,7 @@ export type Database = {
           p_customer_name: string
           p_customer_note?: string
           p_customer_phone: string
+          p_professional_id?: string
           p_service_id: string
           p_start_at: string
         }
