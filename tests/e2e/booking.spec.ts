@@ -41,6 +41,9 @@ test.beforeAll(async () => {
       slot_interval_minutes: 30,
       min_notice_minutes: 0,
       booking_window_days: 60,
+      // T06 gate: the public flow lists two ACTIVE professionals; a Free business
+      // may only hold one, so this business is Pro.
+      plan: "pro",
     },
     { onConflict: "slug" },
   );

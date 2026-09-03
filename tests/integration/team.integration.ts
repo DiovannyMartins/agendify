@@ -36,6 +36,9 @@ let businessId = "";
 let otherUserId = "";
 let setupOwnerId = "";
 let setupBusinessId = "";
+let t05OwnerId = "";
+let t06OwnerId = "";
+let t06BusinessId = "";
 
 beforeAll(async () => {
   admin = adminClient();
@@ -98,9 +101,13 @@ beforeAll(async () => {
 afterAll(async () => {
   await admin.from("businesses").delete().eq("owner_id", ownerId);
   await admin.from("businesses").delete().eq("owner_id", setupOwnerId);
+  await admin.from("businesses").delete().eq("owner_id", t05OwnerId);
+  await admin.from("businesses").delete().eq("owner_id", t06OwnerId);
   await admin.auth.admin.deleteUser(ownerId).catch(() => undefined);
   await admin.auth.admin.deleteUser(otherUserId).catch(() => undefined);
   await admin.auth.admin.deleteUser(setupOwnerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(t05OwnerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(t06OwnerId).catch(() => undefined);
 });
 
 describe("T01: professionals + businesses.plan", () => {
@@ -174,37 +181,72 @@ describe("T05: fluxo público com escolha de profissional", () => {
   let serviceId = "";
   let activeId = "";
   let inactiveId = "";
+  // BusinessId (Free, 1 active) can't lawfully hold two active professionals, so
+  // the public-flow block runs against its own Pro business (ownerId owns both).
+  let proBusinessId = "";
 
   beforeAll(async () => {
+    // A business owner may own exactly one business, so the public-flow block
+    // needs its own owner rather than reusing `ownerId`.
+    const { data: proOwner } = await admin.auth.admin.createUser({
+      email: `publico.${stamp}@agendify.dev`,
+      password: PASSWORD,
+      email_confirm: true,
+    });
+    t05OwnerId = proOwner?.user?.id ?? "";
+    await admin
+      .from("profiles")
+      .upsert({ id: t05OwnerId, display_name: "Dona Pública" }, { onConflict: "id" });
+
+    proBusinessId = await retryOnFk(async () => {
+      const { data: biz, error: bizErr } = await admin
+        .from("businesses")
+        .insert({
+          owner_id: t05OwnerId,
+          name: "Agenda Pública",
+          slug: `agenda-publica-${stamp}`,
+          phone: "+5511987654323",
+          timezone: "America/Sao_Paulo",
+          slot_interval_minutes: 30,
+          min_notice_minutes: 0,
+          booking_window_days: 60,
+          plan: "pro",
+        })
+        .select("*")
+        .single();
+      if (bizErr) throw new Error(`pro business insert: ${bizErr.message}`);
+      return biz!.id;
+    });
+
     const { data: svc } = await admin
       .from("services")
-      .insert({ business_id: businessId, name: "Corte T05", duration_minutes: 30, price_cents: 4000 })
+      .insert({ business_id: proBusinessId, name: "Corte T05", duration_minutes: 30, price_cents: 4000 })
       .select("id")
       .single();
     serviceId = svc!.id;
 
     const { data: active } = await admin
       .from("professionals")
-      .insert({ business_id: businessId, name: "Prof Ativo", is_active: true })
+      .insert({ business_id: proBusinessId, name: "Prof Ativo", is_active: true })
       .select("id")
       .single();
     activeId = active!.id;
 
     const { data: inactive } = await admin
       .from("professionals")
-      .insert({ business_id: businessId, name: "Prof Inativo", is_active: false })
+      .insert({ business_id: proBusinessId, name: "Prof Inativo", is_active: false })
       .select("id")
       .single();
     inactiveId = inactive!.id;
   });
 
   it("the active professional list used by the public page excludes inactive professionals", async () => {
-    // businessId's default professional is the owner "Dona Ana"; the active list
-    // must contain it plus the active one, but never the inactive professional.
+    // proBusinessId's default professional is the owner "Dona Ana"; the active
+    // list must contain it plus the active one, but never the inactive one.
     const { data, error } = await admin
       .from("professionals")
       .select("id, name, is_active")
-      .eq("business_id", businessId)
+      .eq("business_id", proBusinessId)
       .eq("is_active", true)
       .order("created_at", { ascending: true });
     expect(error).toBeNull();
@@ -216,7 +258,7 @@ describe("T05: fluxo público com escolha de profissional", () => {
 
   it("the create_booking RPC rejects a booking for an inactive professional", async () => {
     const { error } = await admin.rpc("create_booking", {
-      p_business_id: businessId,
+      p_business_id: proBusinessId,
       p_service_id: serviceId,
       p_start_at: "2099-05-01T10:00:00.000Z",
       p_customer_name: "Cliente T05",
@@ -229,7 +271,7 @@ describe("T05: fluxo público com escolha de profissional", () => {
 
   it("the create_booking RPC binds the booking to the chosen active professional", async () => {
     const { data, error } = await admin.rpc("create_booking", {
-      p_business_id: businessId,
+      p_business_id: proBusinessId,
       p_service_id: serviceId,
       p_start_at: "2099-05-01T11:00:00.000Z",
       p_customer_name: "Cliente T05 B",
@@ -238,6 +280,118 @@ describe("T05: fluxo público com escolha de profissional", () => {
     });
     expect(error).toBeNull();
     expect(data?.professional_id).toBe(activeId);
-    expect(data?.business_id).toBe(businessId);
+    expect(data?.business_id).toBe(proBusinessId);
+  });
+});
+
+// T06 (gate de plano, ADR 0007): the professional limit is enforced at the DB so
+// it cannot be bypassed by the client. Free=1, Pro=3 active professionals. A
+// professional with history is never deleted — only deactivated — so an inactive
+// insert is always allowed (it adds no active seat), while reactivation at the
+// active limit is rejected.
+describe("T06: gate de plano (Free=1, Pro=3)", () => {
+  let p3 = "";
+  let inactive = "";
+
+  beforeAll(async () => {
+    const { data: user } = await admin.auth.admin.createUser({
+      email: `t06.${stamp}@agendify.dev`,
+      password: PASSWORD,
+      email_confirm: true,
+    });
+    t06OwnerId = user?.user?.id ?? "";
+    await admin
+      .from("profiles")
+      .upsert({ id: t06OwnerId, display_name: "Dona T06" }, { onConflict: "id" });
+
+    // Plan defaults to 'free': the T01 trigger seeds the owner as the single
+    // (active) default professional.
+    t06BusinessId = await retryOnFk(async () => {
+      const { data: biz, error: bizErr } = await admin
+        .from("businesses")
+        .insert({ owner_id: t06OwnerId, ...businessPayload("Agenda T06", `agenda-t06-${stamp}`, "+5511955555000") })
+        .select("*")
+        .single();
+      if (bizErr) throw new Error(`t06 business insert: ${bizErr.message}`);
+      return biz!.id;
+    });
+  });
+
+  it("a Free business (1 active) blocks a second active professional", async () => {
+    const { error } = await admin
+      .from("professionals")
+      .insert({ business_id: t06BusinessId, name: "Extra", is_active: true })
+      .single();
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toUpperCase()).toMatch(/PLAN_LIMIT|LIMIT/i);
+  });
+
+  it("upgrading to Pro allows up to three active professionals, then blocks a fourth", async () => {
+    await admin.from("businesses").update({ plan: "pro" }).eq("id", t06BusinessId);
+
+    const { error: e2 } = await admin
+      .from("professionals")
+      .insert({ business_id: t06BusinessId, name: "Prof 2", is_active: true })
+      .single();
+    expect(e2).toBeNull();
+
+    const { data: three, error: e3 } = await admin
+      .from("professionals")
+      .insert({ business_id: t06BusinessId, name: "Prof 3", is_active: true })
+      .select("id")
+      .single();
+    expect(e3).toBeNull();
+    p3 = three!.id;
+
+    // At the Pro limit (3 active): a fourth ACTIVE professional is rejected.
+    const { error: e4 } = await admin
+      .from("professionals")
+      .insert({ business_id: t06BusinessId, name: "Prof 4", is_active: true })
+      .single();
+    expect(e4).not.toBeNull();
+    expect(String(e4?.message).toUpperCase()).toMatch(/PLAN_LIMIT|LIMIT/i);
+  });
+
+  it("an inactive professional insert is allowed even at the active limit", async () => {
+    // Deactivated professionals don't consume a seat, so adding one while at the
+    // Pro limit is legal (preserves history instead of deleting).
+    const { data, error } = await admin
+      .from("professionals")
+      .insert({ business_id: t06BusinessId, name: "Off Duty", is_active: false })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    inactive = data!.id;
+  });
+
+  it("reactivating a professional at the active limit is blocked", async () => {
+    const { error } = await admin
+      .from("professionals")
+      .update({ is_active: true })
+      .eq("id", inactive)
+      .eq("business_id", t06BusinessId);
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toUpperCase()).toMatch(/PLAN_LIMIT|LIMIT/i);
+  });
+
+  it("deactivating frees a seat and allows reactivation below the limit", async () => {
+    // Deactivate one active professional (now 2 active + 2 inactive).
+    const { error: deact } = await admin
+      .from("professionals")
+      .update({ is_active: false })
+      .eq("id", p3)
+      .eq("business_id", t06BusinessId);
+    expect(deact).toBeNull();
+
+    // Reactivate below the limit (2 active) -> allowed.
+    const { data, error: reac } = await admin
+      .from("professionals")
+      .update({ is_active: true })
+      .eq("id", p3)
+      .eq("business_id", t06BusinessId)
+      .select("is_active")
+      .single();
+    expect(reac).toBeNull();
+    expect(data?.is_active).toBe(true);
   });
 });

@@ -53,6 +53,10 @@ beforeAll(async () => {
         slot_interval_minutes: 30,
         min_notice_minutes: 0,
         booking_window_days: 60,
+        // T06 gate: the per-professional agenda tests need two ACTIVE
+        // professionals, which the Free plan (1) forbids. A free business cannot
+        // lawfully hold two active professionals, so this business is Pro.
+        plan: "pro",
       })
       .select("*")
       .single();

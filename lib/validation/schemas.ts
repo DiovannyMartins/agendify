@@ -51,6 +51,11 @@ export const businessFormSchema = z.object({
 });
 export type BusinessFormValues = z.infer<typeof businessFormSchema>;
 
+export const professionalSchema = z.object({
+  name: z.string().trim().min(2, "Informe o nome do profissional.").max(80),
+});
+export type ProfessionalInput = z.infer<typeof professionalSchema>;
+
 export const serviceSchema = z.object({
   name: z.string().trim().min(2).max(80),
   description: z.string().trim().max(500).nullish(),
