@@ -17,6 +17,12 @@ export function getProfessionalLimit(plan: Plan): number {
   return PROFESSIONAL_LIMITS[plan] ?? PROFESSIONAL_LIMITS.free;
 }
 
+// INC-2: reports and email reminders are Pro features. Fail-closed: anything
+// that isn't exactly "pro" (free, null, undefined) is not treated as Pro.
+export function isProPlan(plan: Plan | null | undefined): boolean {
+  return plan === "pro";
+}
+
 // Server-side gate: whether the business may have one more ACTIVE professional
 // given its current active headcount. Both creating a professional and
 // reactivating a deactivated one add an active seat, so both funnel through

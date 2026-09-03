@@ -163,6 +163,7 @@ export type Database = {
           price_cents_snapshot: number
           professional_id: string | null
           public_code: string
+          reminder_sent_at: string | null
           service_id: string
           service_name_snapshot: string
           start_at: string
@@ -184,6 +185,7 @@ export type Database = {
           price_cents_snapshot: number
           professional_id?: string | null
           public_code?: string
+          reminder_sent_at?: string | null
           service_id: string
           service_name_snapshot: string
           start_at: string
@@ -205,6 +207,7 @@ export type Database = {
           price_cents_snapshot?: number
           professional_id?: string | null
           public_code?: string
+          reminder_sent_at?: string | null
           service_id?: string
           service_name_snapshot?: string
           start_at?: string
@@ -498,6 +501,29 @@ export type Database = {
           service_name: string
           start_at: string
         }[]
+      }
+      get_due_booking_reminders: {
+        Args: { p_lead_minutes?: number }
+        Returns: {
+          business_id: string
+          business_name: string
+          business_slug: string
+          business_timezone: string
+          customer_email_snapshot: string | null
+          customer_name_snapshot: string
+          id: string
+          public_code: string
+          service_name_snapshot: string
+          start_at: string
+        }[]
+      }
+      process_booking_reminders: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      set_booking_reminders_sent: {
+        Args: { p_booking_ids: string[] }
+        Returns: number
       }
     }
     Enums: {

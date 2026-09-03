@@ -3,6 +3,7 @@ import {
   PLAN_LABEL,
   canAddProfessional,
   getProfessionalLimit,
+  isProPlan,
   isSelfServeUpgradeEnabled,
   type Plan,
 } from "@/lib/team/plan";
@@ -42,6 +43,18 @@ describe("canAddProfessional (ADR 0007: Free=1, Pro=3)", () => {
 
   it("Pro blocks a fourth active professional", () => {
     expect(canAddProfessional(3, "pro")).toBe(false);
+  });
+});
+
+describe("isProPlan (INC-2: Pro-gated features like reports and reminders)", () => {
+  it("is true only for the pro plan", () => {
+    expect(isProPlan("pro")).toBe(true);
+    expect(isProPlan("free")).toBe(false);
+  });
+
+  it("treats a missing or null plan as not-Pro (fail-closed)", () => {
+    expect(isProPlan(null)).toBe(false);
+    expect(isProPlan(undefined)).toBe(false);
   });
 });
 

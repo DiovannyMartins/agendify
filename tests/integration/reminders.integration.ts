@@ -1,0 +1,240 @@
+import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { adminClient, retryOnFk } from "./index";
+
+// Integration tests against the real Supabase project. INC-2 (Pro reminders):
+// `get_due_booking_reminders` is the source of truth for the pg_cron tick — it
+// must return exactly the confirmed, future, within-lead, has-e-mail bookings of
+// PRO businesses that have not yet been reminded, and exclude everything else.
+// `set_booking_reminders_sent` then dedups the tick. RUN: npm run test:integration.
+const stamp = Date.now().toString().slice(-8);
+const PRO_EMAIL = `lembrete.${stamp}@agendify.dev`;
+const FREE_EMAIL = `lembrete-free.${stamp}@agendify.dev`;
+const PASSWORD = "senha12345";
+
+let admin: ReturnType<typeof adminClient>;
+let proOwnerId = "";
+let proBusinessId = "";
+let proProfessionalId = "";
+let freeOwnerId = "";
+let freeBusinessId = "";
+let freeProfessionalId = "";
+
+const now = Date.now();
+function iso(offsetMinutes: number): string {
+  return new Date(now + offsetMinutes * 60_000).toISOString();
+}
+
+// The one booking that SHOULD be due: confirmed, future, within lead, has e-mail.
+let dueBookingId = "";
+
+async function insertBooking(opts: {
+  businessId: string;
+  professionalId: string;
+  serviceId: string;
+  startAt: string;
+  phone: string;
+  email: string | null;
+  status?: "confirmed" | "cancelled";
+  reminderSentAt?: string | null;
+}) {
+  const { data: cust } = await admin
+    .from("customers")
+    .insert({ business_id: opts.businessId, name: "Cliente", phone: opts.phone, email: opts.email ?? undefined })
+    .select("id")
+    .single();
+  const end = new Date(new Date(opts.startAt).getTime() + 30 * 60_000).toISOString();
+  const { data: booking, error } = await admin
+    .from("bookings")
+    .insert({
+      business_id: opts.businessId,
+      service_id: opts.serviceId,
+      professional_id: opts.professionalId,
+      customer_id: cust!.id,
+      customer_name_snapshot: "Cliente",
+      customer_phone_snapshot: opts.phone,
+      customer_email_snapshot: opts.email,
+      service_name_snapshot: "Corte",
+      duration_minutes_snapshot: 30,
+      price_cents_snapshot: 4000,
+      start_at: opts.startAt,
+      end_at: end,
+      status: opts.status ?? "confirmed",
+      reminder_sent_at: opts.reminderSentAt ?? null,
+    })
+    .select("id")
+    .single();
+  expect(error).toBeNull();
+  return booking!.id;
+}
+
+beforeAll(async () => {
+  admin = adminClient();
+
+  // PRO business (reminders are Pro-only).
+  const { data: p } = await admin.auth.admin.createUser({
+    email: PRO_EMAIL,
+    password: PASSWORD,
+    email_confirm: true,
+  });
+  proOwnerId = p?.user?.id ?? "";
+  await admin.from("profiles").upsert({ id: proOwnerId, display_name: "Dona Lembrete" }, { onConflict: "id" });
+  proBusinessId = await retryOnFk(async () => {
+    const { data: biz, error: bizErr } = await admin
+      .from("businesses")
+      .insert({
+        owner_id: proOwnerId,
+        name: "Agenda Lembrete",
+        slug: `agenda-lembrete-${stamp}`,
+        phone: "+5511987654321",
+        timezone: "America/Sao_Paulo",
+        slot_interval_minutes: 30,
+        min_notice_minutes: 0,
+        booking_window_days: 60,
+        plan: "pro",
+      })
+      .select("*")
+      .single();
+    if (bizErr) throw new Error(`pro business insert: ${bizErr.message}`);
+    return biz!.id;
+  });
+  const { data: pros } = await admin.from("professionals").select("id").eq("business_id", proBusinessId);
+  proProfessionalId = pros![0].id;
+  const { data: svc } = await admin
+    .from("services")
+    .insert({ business_id: proBusinessId, name: "Corte", duration_minutes: 30, price_cents: 4000 })
+    .select("id")
+    .single();
+  const serviceId = svc!.id;
+
+  // FREE business (must be excluded from Pro reminders).
+  const { data: f } = await admin.auth.admin.createUser({
+    email: FREE_EMAIL,
+    password: PASSWORD,
+    email_confirm: true,
+  });
+  freeOwnerId = f?.user?.id ?? "";
+  await admin.from("profiles").upsert({ id: freeOwnerId, display_name: "Dona Free" }, { onConflict: "id" });
+  freeBusinessId = await retryOnFk(async () => {
+    const { data: biz, error: bizErr } = await admin
+      .from("businesses")
+      .insert({
+        owner_id: freeOwnerId,
+        name: "Agenda Free",
+        slug: `agenda-free-${stamp}`,
+        phone: "+5511976543210",
+        timezone: "America/Sao_Paulo",
+        slot_interval_minutes: 30,
+        min_notice_minutes: 0,
+        booking_window_days: 60,
+      })
+      .select("*")
+      .single();
+    if (bizErr) throw new Error(`free business insert: ${bizErr.message}`);
+    return biz!.id;
+  });
+  const { data: fpros } = await admin.from("professionals").select("id").eq("business_id", freeBusinessId);
+  freeProfessionalId = fpros![0].id;
+  const { data: fsvc } = await admin
+    .from("services")
+    .insert({ business_id: freeBusinessId, name: "Corte", duration_minutes: 30, price_cents: 4000 })
+    .select("id")
+    .single();
+
+  // Pro bookings — one per scenario (same professional, times spaced >= 60min).
+  dueBookingId = await insertBooking({
+    businessId: proBusinessId,
+    professionalId: proProfessionalId,
+    serviceId,
+    startAt: iso(120), // within lead
+    phone: "+5511980000001",
+    email: "due@example.com",
+  });
+  await insertBooking({
+    businessId: proBusinessId,
+    professionalId: proProfessionalId,
+    serviceId,
+    startAt: iso(180),
+    phone: "+5511980000002",
+    email: "already@example.com",
+    reminderSentAt: new Date(now + 1 * 60_000).toISOString(), // already reminded
+  });
+  await insertBooking({
+    businessId: proBusinessId,
+    professionalId: proProfessionalId,
+    serviceId,
+    startAt: iso(1500), // 25h -> beyond the 24h lead
+    phone: "+5511980000003",
+    email: "beyond@example.com",
+  });
+  await insertBooking({
+    businessId: proBusinessId,
+    professionalId: proProfessionalId,
+    serviceId,
+    startAt: iso(240),
+    phone: "+5511980000004",
+    email: null, // no e-mail
+  });
+  await insertBooking({
+    businessId: proBusinessId,
+    professionalId: proProfessionalId,
+    serviceId,
+    startAt: iso(300),
+    phone: "+5511980000005",
+    email: "cancel@example.com",
+    status: "cancelled", // not confirmed
+  });
+  // Free business due booking — excluded by the Pro gate.
+  await insertBooking({
+    businessId: freeBusinessId,
+    professionalId: freeProfessionalId,
+    serviceId: fsvc!.id,
+    startAt: iso(90),
+    phone: "+5511980000006",
+    email: "free@example.com",
+  });
+});
+
+afterAll(async () => {
+  await admin.from("businesses").delete().eq("owner_id", proOwnerId);
+  await admin.from("businesses").delete().eq("owner_id", freeOwnerId);
+  await admin.auth.admin.deleteUser(proOwnerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(freeOwnerId).catch(() => undefined);
+});
+
+describe("INC-2 lembretes: get_due_booking_reminders", () => {
+  it("returns exactly the confirmed, due, has-e-mail, Pro, not-yet-reminded booking", async () => {
+    const { data, error } = await admin.rpc("get_due_booking_reminders", { p_lead_minutes: 1440 });
+    expect(error).toBeNull();
+    const ids = (data ?? []).map((b) => b.id);
+    expect(ids).toContain(dueBookingId);
+    // None of the filtered out bookings are present.
+    expect(ids).toHaveLength(1);
+  });
+
+  it("surfaces the fields the reminder e-mail needs", async () => {
+    const { data } = await admin.rpc("get_due_booking_reminders", { p_lead_minutes: 1440 });
+    const row = data!.find((b) => b.id === dueBookingId)!;
+    expect(row.business_name).toBe("Agenda Lembrete");
+    expect(row.business_timezone).toBe("America/Sao_Paulo");
+    expect(row.customer_email_snapshot).toBe("due@example.com");
+    expect(row.customer_name_snapshot).toBe("Cliente");
+    expect(row.service_name_snapshot).toBe("Corte");
+    expect(row.public_code).toBeTruthy();
+  });
+});
+
+describe("INC-2 lembretes: set_booking_reminders_sent (dedup)", () => {
+  it("marks the due booking and removes it from the next tick", async () => {
+    const { data: marked, error } = await admin.rpc("set_booking_reminders_sent", { p_booking_ids: [dueBookingId] });
+    expect(error).toBeNull();
+    expect(marked).toBe(1);
+
+    const { data: due } = await admin.rpc("get_due_booking_reminders", { p_lead_minutes: 1440 });
+    expect((due ?? []).map((b) => b.id)).not.toContain(dueBookingId);
+  });
+
+  it("is idempotent: marking an already-reminded booking changes nothing", async () => {
+    const { data: marked } = await admin.rpc("set_booking_reminders_sent", { p_booking_ids: [dueBookingId] });
+    expect(marked).toBe(0);
+  });
+});
