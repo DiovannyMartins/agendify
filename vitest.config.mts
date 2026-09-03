@@ -13,6 +13,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "jsdom",
+          globals: true,
           setupFiles: ["./tests/setup.ts"],
           include: [
             "lib/**/*.test.{ts,tsx}",

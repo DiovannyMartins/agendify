@@ -21,7 +21,6 @@ let ownerId = "";
 let businessId = "";
 let professionalId = "";
 let otherOwnerId = "";
-let otherBusinessId = "";
 let serviceCorte = "";
 let serviceBarba = "";
 let serviceSobrancelha = "";
@@ -37,7 +36,7 @@ const PLAN: Array<{ at: string; service: string; name: string; price: number; st
   { at: "2099-05-02T15:00:00.000Z", service: "corte", name: "Corte", price: 4000, status: "confirmed" },
 ];
 
-let bookingIds: string[] = [];
+const bookingIds: string[] = [];
 
 beforeAll(async () => {
   admin = adminClient();
@@ -130,7 +129,7 @@ beforeAll(async () => {
   });
   otherOwnerId = out?.user?.id ?? "";
   await admin.from("profiles").upsert({ id: otherOwnerId, display_name: "Forasteiro" }, { onConflict: "id" });
-  otherBusinessId = await retryOnFk(async () => {
+  await retryOnFk(async () => {
     const { data: biz, error: bizErr } = await admin
       .from("businesses")
       .insert({
