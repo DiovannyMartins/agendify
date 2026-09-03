@@ -1,13 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/business/queries";
-import { getProfessionalLimit } from "@/lib/team/plan";
+import { getProfessionalLimit, PLAN_LABEL } from "@/lib/team/plan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
 import { ProfessionalForm } from "./professional-form";
 import { ProfessionalToggle } from "./professional-toggle";
-
-const PLAN_LABEL = { free: "Free", pro: "Pro" } as const;
 
 export default async function EquipePage() {
   const business = await getCurrentBusiness();

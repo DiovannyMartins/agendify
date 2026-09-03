@@ -60,7 +60,7 @@ export function ProfessionalForm({ limit }: { limit: number }) {
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
           <p className="text-sm text-muted-foreground">
-            Seu plano permite até {limit} profissional{limit === 1 ? "" : "s"}.
+            Seu plano permite até {limit} {limit === 1 ? "profissional" : "profissionais"}.
           </p>
           {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}
           <Button type="submit" disabled={pending} className="w-full">

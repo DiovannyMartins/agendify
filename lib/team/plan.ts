@@ -8,6 +8,11 @@ export const PROFESSIONAL_LIMITS: Record<Plan, number> = {
   pro: 3,
 };
 
+export const PLAN_LABEL: Record<Plan, string> = {
+  free: "Free",
+  pro: "Pro",
+};
+
 export function getProfessionalLimit(plan: Plan): number {
   return PROFESSIONAL_LIMITS[plan] ?? PROFESSIONAL_LIMITS.free;
 }
@@ -19,4 +24,29 @@ export function getProfessionalLimit(plan: Plan): number {
 // professionals (the new seat is not yet counted).
 export function canAddProfessional(currentActiveCount: number, plan: Plan): boolean {
   return currentActiveCount < getProfessionalLimit(plan);
+}
+
+// ADR 0007 (seam para Stripe): self-serve upgrade is a SERVER concern gated by
+// environment. Only dev and preview expose "Assinar Pro"; production has NO
+// self-serve upgrade — the plan is set manually in the DB. The env inputs are
+// injectable so the rule is unit-testable without mocking `process.env`.
+//
+// Production is the default-safe resolution: VERCEL_ENV === "production", or a
+// non-Vercel build where VERCEL_ENV is unset but NODE_ENV is "production". Only
+// an explicit preview sign (VERCEL_ENV="preview") or a development NODE_ENV
+// keeps self-serve enabled.
+//
+// The future Stripe seam lives exactly here: instead of flipping this flag 1→0
+// by hand for a real upgrade, `setPlan` (lib/team/actions.ts) will be routed
+// through a Stripe checkout session. Nothing below it changes.
+export function isSelfServeUpgradeEnabled(
+  env: { nodeEnv?: string; vercelEnv?: string } = {
+    nodeEnv: process.env.NODE_ENV,
+    vercelEnv: process.env.VERCEL_ENV,
+  },
+): boolean {
+  const isProduction =
+    env.vercelEnv === "production" ||
+    (env.vercelEnv === undefined && env.nodeEnv === "production");
+  return !isProduction;
 }

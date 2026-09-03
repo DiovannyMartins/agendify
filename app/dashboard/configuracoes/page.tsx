@@ -1,7 +1,13 @@
 import { redirect } from "next/navigation";
 import { BusinessForm } from "./business-form";
 import { AvailabilityForm, AvailabilityRow } from "./availability-form";
+import { PlanCard } from "./plan-card";
 import { getCurrentBusiness } from "@/lib/business/queries";
+import {
+  getProfessionalLimit,
+  isSelfServeUpgradeEnabled,
+  PLAN_LABEL,
+} from "@/lib/team/plan";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ConfiguracoesPage() {
@@ -18,6 +24,14 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
+      <PlanCard
+        plan={business.plan}
+        planLabel={PLAN_LABEL[business.plan]}
+        limit={getProfessionalLimit(business.plan)}
+        proLimit={getProfessionalLimit("pro")}
+        selfServeEnabled={isSelfServeUpgradeEnabled()}
+      />
+
       <BusinessForm initial={business} />
 
       <section>

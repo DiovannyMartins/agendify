@@ -39,6 +39,7 @@ let setupBusinessId = "";
 let t05OwnerId = "";
 let t06OwnerId = "";
 let t06BusinessId = "";
+let t07OwnerId = "";
 
 beforeAll(async () => {
   admin = adminClient();
@@ -108,6 +109,7 @@ afterAll(async () => {
   await admin.auth.admin.deleteUser(setupOwnerId).catch(() => undefined);
   await admin.auth.admin.deleteUser(t05OwnerId).catch(() => undefined);
   await admin.auth.admin.deleteUser(t06OwnerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(t07OwnerId).catch(() => undefined);
 });
 
 describe("T01: professionals + businesses.plan", () => {
@@ -393,5 +395,110 @@ describe("T06: gate de plano (Free=1, Pro=3)", () => {
       .single();
     expect(reac).toBeNull();
     expect(data?.is_active).toBe(true);
+  });
+});
+
+// T07 (plano + upgrade self-serve em dev/preview, seam para Stripe — ADR 0007):
+// `businesses.plan` is the seat of the monetization gate. This block verifies the
+// DB ground-truth the React `setPlan` server action relies on (that action itself
+// uses SSR cookies, so it is not exercised here):
+//   1. a fresh business defaults to plan 'free' and the gate blocks a second
+//      active professional;
+//   2. an OWNER SESSION cannot change the plan — the plan-protection trigger means
+//      there is no self-serve path straight from the client;
+//   3. the PRIVILEGED service_role (the only path setPlan uses in dev/preview)
+//      CAN upgrade to 'pro', and then the gate permits up to 3 active professionals.
+describe("T07: plano + upgrade self-serve (ADR 0007: seam para Stripe)", () => {
+  let freeBusinessId = "";
+
+  beforeAll(async () => {
+    const { data: user } = await admin.auth.admin.createUser({
+      email: `t07.${stamp}@agendify.dev`,
+      password: PASSWORD,
+      email_confirm: true,
+    });
+    t07OwnerId = user?.user?.id ?? "";
+    await admin
+      .from("profiles")
+      .upsert({ id: t07OwnerId, display_name: "Dona T07" }, { onConflict: "id" });
+
+    freeBusinessId = await retryOnFk(async () => {
+      const { data: biz, error: bizErr } = await admin
+        .from("businesses")
+        .insert({
+          owner_id: t07OwnerId,
+          ...businessPayload("Agenda T07", `agenda-t07-${stamp}`, "+5511955555001"),
+        })
+        .select("*")
+        .single();
+      if (bizErr) throw new Error(`t07 business insert: ${bizErr.message}`);
+      return biz!.id;
+    });
+  });
+
+  it("a fresh business defaults to plan 'free'", async () => {
+    const { data } = await admin
+      .from("businesses")
+      .select("plan")
+      .eq("id", freeBusinessId)
+      .single();
+    expect(data?.plan).toBe("free");
+  });
+
+  it("the Free plan blocks a second active professional", async () => {
+    const { error } = await admin
+      .from("professionals")
+      .insert({ business_id: freeBusinessId, name: "T07 Extra", is_active: true })
+      .single();
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toUpperCase()).toMatch(/PLAN_LIMIT|LIMIT/i);
+  });
+
+  it("an owner SESSION cannot change the plan (no self-serve path from the client)", async () => {
+    const owner = await anonClientForUser(`t07.${stamp}@agendify.dev`, PASSWORD);
+    const { error } = await owner
+      .from("businesses")
+      .update({ plan: "pro" })
+      .eq("id", freeBusinessId);
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toUpperCase()).toMatch(/PLAN|SELF_SERVE|FORBIDDEN/i);
+  });
+
+  it("the privileged service_role can upgrade the plan (the setPlan path)", async () => {
+    const { error } = await admin
+      .from("businesses")
+      .update({ plan: "pro" })
+      .eq("id", freeBusinessId);
+    expect(error).toBeNull();
+
+    const { data } = await admin
+      .from("businesses")
+      .select("plan")
+      .eq("id", freeBusinessId)
+      .single();
+    expect(data?.plan).toBe("pro");
+  });
+
+  it("after the upgrade, the gate allows up to three active professionals", async () => {
+    const { data: two } = await admin
+      .from("professionals")
+      .insert({ business_id: freeBusinessId, name: "T07 Prof 2", is_active: true })
+      .select("id")
+      .single();
+    expect(two?.id).toBeTruthy();
+
+    const { data: three } = await admin
+      .from("professionals")
+      .insert({ business_id: freeBusinessId, name: "T07 Prof 3", is_active: true })
+      .select("id")
+      .single();
+    expect(three?.id).toBeTruthy();
+
+    const { error: blocked } = await admin
+      .from("professionals")
+      .insert({ business_id: freeBusinessId, name: "T07 Prof 4", is_active: true })
+      .single();
+    expect(blocked).not.toBeNull();
+    expect(String(blocked?.message).toUpperCase()).toMatch(/PLAN_LIMIT|LIMIT/i);
   });
 });
