@@ -14,6 +14,24 @@ export function adminClient(): SupabaseClient<Database> {
   });
 }
 
+// Retry a business upsert/insert on the transient `businesses_owner_id_fkey` FK
+// race (23503) that can appear when integration files run against the shared
+// remote project. Production constraints are untouched.
+export async function retryOnFk<T>(fn: () => Promise<T>, attempts = 6, delayMs = 250): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e as { message?: unknown })?.message ?? e);
+      if (!/businesses_owner_id_fkey|23503/i.test(msg)) throw e;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 // A publishable-key client with no session, used to exercise RLS/ACL as the
 // anonymous (anon) role.
 export function anonClient(): SupabaseClient<Database> {
