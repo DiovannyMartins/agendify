@@ -134,6 +134,7 @@ export async function deleteBlock(id: string): Promise<void> {
 
 export async function getSlotsForDate(
   businessId: string,
+  professionalId: string,
   serviceId: string,
   date: string,
 ): Promise<{ available: string[]; error?: string }> {
@@ -147,6 +148,17 @@ export async function getSlotsForDate(
     .single();
 
   if (!business || !business.is_active) return { available: [], error: "not_found" };
+
+  // The professional must exist, belong to this business and be active, so the
+  // public flow can never compute slots for a hidden or foreign professional.
+  const { data: professional } = await supabase
+    .from("professionals")
+    .select("id, business_id, is_active")
+    .eq("id", professionalId)
+    .eq("business_id", businessId)
+    .single();
+
+  if (!professional || !professional.is_active) return { available: [], error: "professional_not_found" };
 
   const { data: service } = await supabase
     .from("services")
@@ -167,10 +179,14 @@ export async function getSlotsForDate(
   // §10.2: interpret "now" and the requested date in the business timezone.
   const weekday = weekdayOf(date, business.timezone);
 
+  // Availability, blocks and occupied slots are resolved for the chosen
+  // professional only (§ADR 0006): two professionals in the same slot are
+  // allowed, so each professional's agenda is computed independently.
   const { data: intervals } = await supabase
     .from("availability")
     .select("start_time, end_time")
     .eq("business_id", businessId)
+    .eq("professional_id", professionalId)
     .eq("weekday", weekday)
     .eq("is_active", true);
 
@@ -181,12 +197,14 @@ export async function getSlotsForDate(
       .from("availability_blocks")
       .select("start_at, end_at")
       .eq("business_id", businessId)
+      .eq("professional_id", professionalId)
       .lt("start_at", day.end)
       .gt("end_at", day.start),
     supabase
       .from("bookings")
       .select("start_at, end_at")
       .eq("business_id", businessId)
+      .eq("professional_id", professionalId)
       .neq("status", "cancelled")
       .lt("start_at", day.end)
       .gt("end_at", day.start),

@@ -25,6 +25,7 @@ type ServerClient = ReturnType<typeof createAdminClient>;
 
 export async function createBooking(input: {
   slug: string;
+  professionalId: string;
   serviceId: string;
   date: string;
   startTime: string;
@@ -96,9 +97,26 @@ export async function createBooking(input: {
     return { ok: false, code: "service_not_found", message: "Serviço indisponível." };
   }
 
+  // The chosen professional must exist, belong to this business and be active.
+  // The RPC re-validates this, but rejecting early keeps the error message and
+  // the availability revalidation below consistent with the widget's list. A
+  // missing OR deactivated professional surfaces as a single `professional_not_found`
+  // (the public page only lists active professionals, so this only fires when the
+  // professional is deactivated mid-session).
+  const { data: professional } = await supabase
+    .from("professionals")
+    .select("id, business_id, is_active")
+    .eq("id", input.professionalId)
+    .eq("business_id", business.id)
+    .single();
+  if (!professional || !professional.is_active) {
+    return { ok: false, code: "professional_not_found", message: "Profissional indisponível." };
+  }
+
   // Server-side revalidation of availability (§11.3 step 5). `getSlotRange`
-  // returns null only when the day has no active availability range.
-  const slotRange = await getSlotRange(supabase, business.id, input.date, business.timezone);
+  // returns null only when the day has no active availability range for the
+  // chosen professional.
+  const slotRange = await getSlotRange(supabase, business.id, professional.id, input.date, business.timezone);
   if (slotRange === null) {
     return { ok: false, code: "no_availability", message: "Este dia não possui horários disponíveis. Escolha outra data." };
   }
@@ -127,6 +145,7 @@ export async function createBooking(input: {
   const { data, error } = await admin.rpc("create_booking", {
     p_business_id: business.id,
     p_service_id: service.id,
+    p_professional_id: professional.id,
     p_start_at: startAtIso,
     p_customer_name: parsed.data.customerName,
     p_customer_phone: parsed.data.customerPhone,
@@ -199,15 +218,19 @@ type SlotRange = {
 async function getSlotRange(
   supabase: ServerClient,
   businessId: string,
+  professionalId: string,
   date: string,
   timezone: string,
 ): Promise<SlotRange | null> {
   const weekday = weekdayOf(date, timezone);
 
+  // Availability, blocks and occupied slots belong to one professional (§ADR
+  // 0006), so the revalidation is scoped to the chosen professional.
   const { data: intervals } = await supabase
     .from("availability")
     .select("start_time, end_time")
     .eq("business_id", businessId)
+    .eq("professional_id", professionalId)
     .eq("weekday", weekday)
     .eq("is_active", true);
 
@@ -220,12 +243,14 @@ async function getSlotRange(
       .from("availability_blocks")
       .select("start_at, end_at")
       .eq("business_id", businessId)
+      .eq("professional_id", professionalId)
       .lt("start_at", day.end)
       .gt("end_at", day.start),
     supabase
       .from("bookings")
       .select("start_at, end_at")
       .eq("business_id", businessId)
+      .eq("professional_id", professionalId)
       .neq("status", "cancelled")
       .lt("start_at", day.end)
       .gt("end_at", day.start),

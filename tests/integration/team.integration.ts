@@ -164,3 +164,80 @@ describe("T04: setup cria o profissional padrão para negócios novos", () => {
     expect(professional.id).toBeTruthy();
   });
 });
+
+// T05 (fluxo público com escolha de profissional): a página pública lista os
+// profissionais ATIVOS do negócio e a reserva é criada vinculada ao profissional
+// escolhido. Este bloco verifica o seam de banco que sustenta o fluxo: a listagem
+// ativa exclui profissionais inativos, e o RPC create_booking rejeita um
+// profissional inativo (sem nunca aceitar um de outro negócio, ver T03).
+describe("T05: fluxo público com escolha de profissional", () => {
+  let serviceId = "";
+  let activeId = "";
+  let inactiveId = "";
+
+  beforeAll(async () => {
+    const { data: svc } = await admin
+      .from("services")
+      .insert({ business_id: businessId, name: "Corte T05", duration_minutes: 30, price_cents: 4000 })
+      .select("id")
+      .single();
+    serviceId = svc!.id;
+
+    const { data: active } = await admin
+      .from("professionals")
+      .insert({ business_id: businessId, name: "Prof Ativo", is_active: true })
+      .select("id")
+      .single();
+    activeId = active!.id;
+
+    const { data: inactive } = await admin
+      .from("professionals")
+      .insert({ business_id: businessId, name: "Prof Inativo", is_active: false })
+      .select("id")
+      .single();
+    inactiveId = inactive!.id;
+  });
+
+  it("the active professional list used by the public page excludes inactive professionals", async () => {
+    // businessId's default professional is the owner "Dona Ana"; the active list
+    // must contain it plus the active one, but never the inactive professional.
+    const { data, error } = await admin
+      .from("professionals")
+      .select("id, name, is_active")
+      .eq("business_id", businessId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+    expect(error).toBeNull();
+    const ids = (data ?? []).map((p) => p.id);
+    expect(ids).toContain(activeId);
+    expect(ids).not.toContain(inactiveId);
+    expect((data ?? []).every((p) => p.is_active)).toBe(true);
+  });
+
+  it("the create_booking RPC rejects a booking for an inactive professional", async () => {
+    const { error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2099-05-01T10:00:00.000Z",
+      p_customer_name: "Cliente T05",
+      p_customer_phone: "+55119577770001",
+      p_professional_id: inactiveId,
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/inactive|professional|not_found/i);
+  });
+
+  it("the create_booking RPC binds the booking to the chosen active professional", async () => {
+    const { data, error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2099-05-01T11:00:00.000Z",
+      p_customer_name: "Cliente T05 B",
+      p_customer_phone: "+55119577770002",
+      p_professional_id: activeId,
+    });
+    expect(error).toBeNull();
+    expect(data?.professional_id).toBe(activeId);
+    expect(data?.business_id).toBe(businessId);
+  });
+});

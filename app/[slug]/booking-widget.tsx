@@ -12,6 +12,11 @@ import { createBooking } from "@/lib/booking/actions";
 import { getSlotsForDate } from "@/lib/availability/actions";
 import { cn } from "@/lib/utils";
 
+type ProfessionalOption = {
+  id: string;
+  name: string;
+};
+
 type ServiceOption = {
   id: string;
   name: string;
@@ -22,13 +27,16 @@ type ServiceOption = {
 export function BookingWidget({
   businessId,
   slug,
+  professionals,
   services,
 }: {
   businessId: string;
   slug: string;
+  professionals: ProfessionalOption[];
   services: ServiceOption[];
 }) {
   const router = useRouter();
+  const [professionalId, setProfessionalId] = useState(professionals[0]?.id ?? "");
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -60,13 +68,20 @@ export function BookingWidget({
     setSlots([]);
   }
 
+  function handleProfessionalChange(value: string) {
+    setProfessionalId(value);
+    setDate("");
+    setSelectedSlot(null);
+    setSlots([]);
+  }
+
   function handleDateChange(value: string) {
     setDate(value);
     setSelectedSlot(null);
     setSlots([]);
-    if (value && serviceId) {
+    if (value && serviceId && professionalId) {
       startTransition(() => {
-        getSlotsForDate(businessId, serviceId, value).then((res) =>
+        getSlotsForDate(businessId, professionalId, serviceId, value).then((res) =>
           setSlots(res.available ?? []),
         );
       });
@@ -74,20 +89,24 @@ export function BookingWidget({
   }
 
   useEffect(() => {
-    if (!serviceId || !date) return;
+    if (!serviceId || !date || !professionalId) return;
     let cancelled = false;
     startTransition(() => {
-      getSlotsForDate(businessId, serviceId, date).then((res) => {
+      getSlotsForDate(businessId, professionalId, serviceId, date).then((res) => {
         if (!cancelled) setSlots(res.available ?? []);
       });
     });
     return () => {
       cancelled = true;
     };
-  }, [serviceId, date, businessId]);
+  }, [serviceId, date, professionalId, businessId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!professionalId) {
+      setError("Escolha um profissional.");
+      return;
+    }
     if (!slot) {
       setError("Escolha um horário.");
       return;
@@ -100,6 +119,7 @@ export function BookingWidget({
     setError(null);
     const result = await createBooking({
       slug,
+      professionalId,
       serviceId,
       date,
       startTime: slot,
@@ -123,6 +143,27 @@ export function BookingWidget({
   return (
     <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-background p-6 shadow-sm">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="professional">Escolha o profissional</Label>
+          <select
+            id="professional"
+            value={professionalId}
+            onChange={(e) => handleProfessionalChange(e.target.value)}
+            disabled={professionals.length === 0}
+            className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3"
+          >
+            {professionals.length === 0 ? (
+              <option value="">Nenhum profissional disponível</option>
+            ) : (
+              professionals.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="service">Escolha o serviço</Label>
           <select
