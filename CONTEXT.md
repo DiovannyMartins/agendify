@@ -60,6 +60,14 @@ _Avoid_: Cópia, imagem, ponto no tempo
 UUID aleatório de uma reserva, usado apenas na tela pública de confirmação. Nunca autoriza acesso a dados do cliente.
 _Avoid_: Token, link de confirmação, código de rastreio
 
+**Token de cancelamento**:
+Capability HMAC-SHA256 derivada do public_code com segredo server-only; seu detentor (a tela de confirmação) cancela a própria reserva. Nunca é armazenado, nunca expõe dados pessoais e não é retornado pela consulta pública.
+_Avoid_: Token de sessão, código de cancelamento, hash
+
+**Lista de espera**:
+Fila de clientes que desejam um horário específico (profissional + serviço + início) quando ele está ocupado; deduplicada por (profissional, serviço, início, telefone). Não cria reserva automaticamente.
+_Avoid_: Fila, agendamento pendente, banco de espera
+
 **No-show**:
 Reserva em que o cliente não compareceu. Estado terminal que permanece no histórico.
 _Avoid_: Falta, ausência, não comparecimento

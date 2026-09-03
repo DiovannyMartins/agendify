@@ -1,12 +1,14 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { bookingSchema } from "@/lib/validation/schemas";
+import { bookingSchema, publicCodeSchema } from "@/lib/validation/schemas";
 import {
   lookupBookingByPublicCode,
   toConsultState,
   type ConsultState,
 } from "@/lib/bookings/lookup";
+import { verifyCancelToken } from "@/lib/bookings/cancel";
+import { isWaitlistEligible, parseWaitlistInput } from "@/lib/waitlist/waitlist";
 import {
   computeAvailableSlots,
   localDayRangeUtc,
@@ -207,6 +209,159 @@ export async function consultBooking(
     code,
   );
   return toConsultState(result);
+}
+
+// Self-service cancellation (INC-3). The caller must present the token derived
+// from the booking's public_code (HMAC-SHA256 with CANCEL_TOKEN_SECRET); the
+// public lookup never returns it, so possession is the proof of the customer's
+// own reservation. The RPC performs the atomic confirmed -> cancelled transition
+// (service_role-only), which also frees the slot for a new reservation. Gated by
+// a fail-open per-IP rate limit like the consultation flow.
+export type CancelState =
+  | { status: "idle" }
+  | { status: "done" }
+  | { status: "error"; code: "INVALID_TOKEN" | "NOT_FOUND" | "NOT_CONFIRMED" | "DB_ERROR" | "RATE_LIMITED"; message: string };
+
+export async function cancelPublicBooking(
+  _prev: CancelState,
+  formData: FormData,
+): Promise<CancelState> {
+  const code = String(formData.get("code") ?? "").trim();
+  const token = String(formData.get("token") ?? "").trim();
+  const reason = String(formData.get("cancelReason") ?? "").trim() || undefined;
+
+  const parsed = publicCodeSchema.safeParse(code);
+  if (!parsed.success) {
+    return { status: "error", code: "NOT_FOUND", message: "Informe um código de reserva válido." };
+  }
+
+  const secret = process.env.CANCEL_TOKEN_SECRET ?? "";
+  if (!verifyCancelToken(secret, parsed.data, token)) {
+    return {
+      status: "error",
+      code: "INVALID_TOKEN",
+      message: "Você precisa abrir a confirmação desta reserva para cancelá-la.",
+    };
+  }
+
+  const supabase = createAdminClient();
+
+  const ip = await getClientIp();
+  let allowed: boolean;
+  try {
+    allowed = await enforceConsultRateLimit(supabase, ip);
+  } catch {
+    allowed = true;
+  }
+  if (!allowed) {
+    return {
+      status: "error",
+      code: "RATE_LIMITED",
+      message: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    };
+  }
+
+  const { error } = await supabase.rpc("cancel_booking_by_public_code", {
+    p_code: parsed.data,
+    p_cancel_reason: reason,
+  });
+
+  if (error) {
+    const msg = String(error.message ?? "");
+    if (/BOOKING_NOT_FOUND/i.test(msg)) {
+      return { status: "error", code: "NOT_FOUND", message: "Reserva não encontrada." };
+    }
+    if (/BOOKING_NOT_CONFIRMED/i.test(msg)) {
+      return { status: "error", code: "NOT_CONFIRMED", message: "Esta reserva já não pode ser cancelada." };
+    }
+    return { status: "error", code: "DB_ERROR", message: "Não foi possível cancelar. Tente novamente." };
+  }
+
+  return { status: "done" };
+}
+
+// Waitlist join (INC-3). When a customer's preferred slot is already occupied
+// they can leave their contact + the desired slot so a later opening can be
+// offered. The server re-validates everything (business/timezone/slot/contact),
+// requires the slot to be genuinely occupied (a free slot should just be booked),
+// and the `join_waitlist` RPC enforces integrity + dedup atomically. Same anti-bot
+// and fail-closed reservation limiter as createBooking: this is an anonymous write.
+export async function joinWaitlist(input: {
+  slug: string;
+  professionalId: string;
+  serviceId: string;
+  date: string;
+  startTime: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  cfTurnstileToken?: string;
+}): Promise<ActionResult> {
+  const supabase = createAdminClient();
+
+  const gate = await verifyTurnstile(input.cfTurnstileToken);
+  if (!gate.ok) {
+    return { ok: false, code: "captcha_failed", message: "Verificação humana falhou. Tente novamente." };
+  }
+
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("*")
+    .eq("slug", input.slug)
+    .eq("is_active", true)
+    .single();
+
+  if (!business) {
+    return { ok: false, code: "not_found", message: "Página não encontrada." };
+  }
+
+  const ip = await getClientIp();
+  const allowed = await enforceRateLimit(supabase, ip, business.id);
+  if (!allowed) {
+    return {
+      ok: false,
+      code: "rate_limited",
+      message: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    };
+  }
+
+  const startAt = zonedTimeToUtc(input.date, input.startTime, business.timezone);
+
+  const parsed = parseWaitlistInput({
+    professionalId: input.professionalId,
+    serviceId: input.serviceId,
+    startAt,
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    customerEmail: input.customerEmail,
+  });
+  if (!parsed.ok) {
+    return { ok: false, code: "validation", message: "Revise os dados. " + parsed.message };
+  }
+
+  if (!isWaitlistEligible(startAt, new Date())) {
+    return { ok: false, code: "no_future", message: "Esse horário já passou e não pode entrar na lista de espera." };
+  }
+
+  const { data, error } = await supabase.rpc("join_waitlist", {
+    p_business_id: business.id,
+    p_professional_id: parsed.data.professionalId,
+    p_service_id: parsed.data.serviceId,
+    p_start_at: parsed.data.startAt,
+    p_customer_name: parsed.data.customerName,
+    p_customer_phone: parsed.data.customerPhone,
+    p_customer_email: parsed.data.customerEmail || undefined,
+  });
+
+  if (error || !data) {
+    const msg = String(error?.message ?? "");
+    if (/WAITLIST_SLOT_NOT_OCCUPIED/i.test(msg)) {
+      return { ok: false, code: "slot_free", message: "Esse horário está livre — você pode reservá-lo." };
+    }
+    return { ok: false, code: "db_error", message: "Não foi possível entrar na lista de espera. Tente novamente." };
+  }
+
+  return { ok: true, message: "Você entrou na lista de espera deste horário." };
 }
 
 type SlotRange = {

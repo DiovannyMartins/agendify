@@ -442,11 +442,97 @@ export type Database = {
           },
         ]
       }
+      waitlist_entries: {
+        Row: {
+          business_id: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          professional_id: string
+          service_id: string
+          start_at: string
+          status: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          id?: string
+          professional_id: string
+          service_id: string
+          start_at: string
+          status?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          professional_id?: string
+          service_id?: string
+          start_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_entries_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_entries_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      cancel_booking_by_public_code: {
+        Args: { p_code: string; p_cancel_reason?: string }
+        Returns: {
+          business_id: string
+          cancel_reason: string | null
+          created_at: string
+          customer_email_snapshot: string | null
+          customer_id: string
+          customer_name_snapshot: string
+          customer_note: string | null
+          customer_phone_snapshot: string
+          duration_minutes_snapshot: number
+          end_at: string
+          id: string
+          price_cents_snapshot: number
+          professional_id: string | null
+          public_code: string
+          reminder_sent_at: string | null
+          service_id: string
+          service_name_snapshot: string
+          start_at: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+        }
+      }
       check_booking_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }
         Returns: boolean
@@ -516,6 +602,44 @@ export type Database = {
           service_name_snapshot: string
           start_at: string
         }[]
+      }
+      get_waitlist_for_slot: {
+        Args: { p_professional_id: string; p_start_at: string }
+        Returns: {
+          business_id: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          professional_id: string
+          service_id: string
+          start_at: string
+          status: string
+        }[]
+      }
+      join_waitlist: {
+        Args: {
+          p_business_id: string
+          p_customer_email?: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_professional_id: string
+          p_service_id: string
+          p_start_at: string
+        }
+        Returns: {
+          business_id: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          professional_id: string
+          service_id: string
+          start_at: string
+          status: string
+        }
       }
       process_booking_reminders: {
         Args: Record<string, never>

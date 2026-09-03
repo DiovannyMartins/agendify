@@ -2,8 +2,11 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { CheckCircle2, CalendarClock } from "lucide-react";
+import { CheckCircle2, CalendarClock, CalendarPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { deriveCancelToken } from "@/lib/bookings/cancel";
+import { buildGoogleCalendarUrl, buildIcsString } from "@/lib/gcal/gcal";
+import { CancelBooking } from "./cancel-booking";
 
 async function ConfirmationContent({ code, slug }: { code: string; slug: string }) {
   const supabase = createAdminClient();
@@ -22,6 +25,18 @@ async function ConfirmationContent({ code, slug }: { code: string; slug: string 
     minute: "2-digit",
     timeZone: tz,
   }).format(new Date(booking.start_at));
+
+  const gcalBooking = {
+    summary: booking.service_name,
+    startAt: booking.start_at,
+    endAt: booking.end_at,
+    location: booking.business_name,
+    description: `Reserva em ${booking.business_name}`,
+    timezone: tz,
+  };
+  const gcalUrl = buildGoogleCalendarUrl(gcalBooking);
+  const ics = buildIcsString(gcalBooking);
+  const cancelToken = deriveCancelToken(process.env.CANCEL_TOKEN_SECRET ?? "", code);
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg items-center justify-center px-4 py-12">
@@ -53,6 +68,28 @@ async function ConfirmationContent({ code, slug }: { code: string; slug: string 
         <p className="mt-4 text-xs text-muted-foreground">
           Guarde o código <Badge variant="secondary">{code}</Badge>
         </p>
+        <div className="mt-6 flex flex-col items-center gap-3 text-sm font-medium">
+          <div className="flex flex-wrap justify-center gap-2">
+            <a
+              href={gcalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:border-primary/60"
+            >
+              <CalendarPlus className="size-4 text-primary" />
+              Adicionar ao Google Calendar
+            </a>
+            <a
+              href={`data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`}
+              download="agendify-reserva.ics"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:border-primary/60"
+            >
+              <CalendarClock className="size-4 text-primary" />
+              Baixar .ics
+            </a>
+          </div>
+          {cancelToken && <CancelBooking code={code} token={cancelToken} />}
+        </div>
         <div className="mt-6 flex flex-col gap-2 text-sm font-medium">
           <Link href={`/${slug}`} className="hover:underline">
             ← Fazer outra reserva

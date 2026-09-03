@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { TurnstileWidget } from "@/components/turnstile-widget";
-import { createBooking } from "@/lib/booking/actions";
+import { createBooking, joinWaitlist } from "@/lib/booking/actions";
 import { getSlotsForDate } from "@/lib/availability/actions";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +51,10 @@ export function BookingWidget({
   const [error, setError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReady, setTurnstileReady] = useState(true);
+  const [lastAttempt, setLastAttempt] = useState<{ date: string; startTime: string } | null>(null);
+  const [waitlistOffered, setWaitlistOffered] = useState(false);
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState<string | null>(null);
+  const [waitlistBusy, setWaitlistBusy] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -66,6 +70,7 @@ export function BookingWidget({
     setServiceId(value);
     setSelectedSlot(null);
     setSlots([]);
+    resetWaitlist();
   }
 
   function handleProfessionalChange(value: string) {
@@ -73,12 +78,14 @@ export function BookingWidget({
     setDate("");
     setSelectedSlot(null);
     setSlots([]);
+    resetWaitlist();
   }
 
   function handleDateChange(value: string) {
     setDate(value);
     setSelectedSlot(null);
     setSlots([]);
+    resetWaitlist();
     if (value && serviceId && professionalId) {
       startTransition(() => {
         getSlotsForDate(businessId, professionalId, serviceId, value).then((res) =>
@@ -86,6 +93,12 @@ export function BookingWidget({
         );
       });
     }
+  }
+
+  function resetWaitlist() {
+    setLastAttempt(null);
+    setWaitlistOffered(false);
+    setWaitlistSubmitted(null);
   }
 
   useEffect(() => {
@@ -132,9 +145,50 @@ export function BookingWidget({
     setSubmitting(false);
     if (result.ok && result.publicCode) {
       router.push(`/${slug}/confirmacao?code=${result.publicCode}`);
+    } else if (result.code === "slot_taken") {
+      // INC-3: the slot was lost to another reservation — offer the waitlist.
+      setError(result.message ?? "Esse horário não está mais disponível.");
+      setLastAttempt({ date, startTime: slot });
+      setWaitlistOffered(true);
+      setWaitlistSubmitted(null);
     } else {
       setError(result.message ?? "Não foi possível concluir a reserva.");
       setSelectedSlot(null);
+    }
+  }
+
+  async function handleJoinWaitlist() {
+    if (!professionalId || !serviceId || !lastAttempt) return;
+    setWaitlistBusy(true);
+    setError(null);
+    const res = await joinWaitlist({
+      slug,
+      professionalId,
+      serviceId,
+      date: lastAttempt.date,
+      startTime: lastAttempt.startTime,
+      customerName,
+      customerPhone,
+      customerEmail: customerEmail || undefined,
+      cfTurnstileToken: turnstileToken || undefined,
+    });
+    setWaitlistBusy(false);
+    if (res.ok) {
+      setWaitlistOffered(false);
+      setWaitlistSubmitted(res.message ?? "Você entrou na lista de espera deste horário.");
+      setSelectedSlot(null);
+      setSlots([]);
+    } else if (res.code === "slot_free") {
+      // The slot was freed mid-flow: drop the waitlist offer and refresh the
+      // slots so the customer can book it directly.
+      setWaitlistOffered(false);
+      setError(res.message ?? "Esse horário está livre.");
+      setSelectedSlot(null);
+      getSlotsForDate(businessId, professionalId, serviceId, lastAttempt.date).then((r) =>
+        setSlots(r.available ?? []),
+      );
+    } else {
+      setError(res.message ?? "Não foi possível entrar na lista de espera.");
     }
   }
 
@@ -207,7 +261,10 @@ export function BookingWidget({
                 <button
                   key={time}
                   type="button"
-                  onClick={() => setSelectedSlot(time)}
+                  onClick={() => {
+                    setSelectedSlot(time);
+                    resetWaitlist();
+                  }}
                   className={cn(
                     "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                     slot === time
@@ -268,6 +325,30 @@ export function BookingWidget({
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {waitlistOffered && (
+          <div className="rounded-xl border border-border bg-muted/40 p-4">
+            <p className="text-sm font-medium">Esse horário acabou de ser reservado.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Quer entrar na lista de espera? Se alguém cancelar, este horário fica em aberto.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleJoinWaitlist}
+              disabled={waitlistBusy}
+              className="mt-3 w-full"
+            >
+              {waitlistBusy ? "Entrando..." : "Entrar na lista de espera"}
+            </Button>
+          </div>
+        )}
+
+        {waitlistSubmitted && (
+          <div className="rounded-xl border border-green-600/30 bg-green-50 p-4 text-sm text-green-800">
+            {waitlistSubmitted}
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="flex items-start gap-2 text-sm text-muted-foreground">
