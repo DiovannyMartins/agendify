@@ -45,6 +45,7 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean
+          professional_id: string | null
           start_time: string
           weekday: number
         }
@@ -53,6 +54,7 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean
+          professional_id?: string | null
           start_time: string
           weekday: number
         }
@@ -61,6 +63,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean
+          professional_id?: string | null
           start_time?: string
           weekday?: number
         }
@@ -72,6 +75,13 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "availability_professional_business_fkey"
+            columns: ["professional_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id", "business_id"]
+          },
         ]
       }
       availability_blocks: {
@@ -80,6 +90,7 @@ export type Database = {
           created_at: string
           end_at: string
           id: string
+          professional_id: string | null
           reason: string | null
           start_at: string
         }
@@ -88,6 +99,7 @@ export type Database = {
           created_at?: string
           end_at: string
           id?: string
+          professional_id?: string | null
           reason?: string | null
           start_at: string
         }
@@ -96,6 +108,7 @@ export type Database = {
           created_at?: string
           end_at?: string
           id?: string
+          professional_id?: string | null
           reason?: string | null
           start_at?: string
         }
@@ -106,6 +119,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_professional_business_fkey"
+            columns: ["professional_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id", "business_id"]
           },
         ]
       }
@@ -141,6 +161,7 @@ export type Database = {
           end_at: string
           id: string
           price_cents_snapshot: number
+          professional_id: string | null
           public_code: string
           service_id: string
           service_name_snapshot: string
@@ -161,6 +182,7 @@ export type Database = {
           end_at: string
           id?: string
           price_cents_snapshot: number
+          professional_id?: string | null
           public_code?: string
           service_id: string
           service_name_snapshot: string
@@ -181,6 +203,7 @@ export type Database = {
           end_at?: string
           id?: string
           price_cents_snapshot?: number
+          professional_id?: string | null
           public_code?: string
           service_id?: string
           service_name_snapshot?: string
@@ -202,6 +225,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_professional_business_fkey"
+            columns: ["professional_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id", "business_id"]
           },
           {
             foreignKeyName: "bookings_service_business_fkey"
@@ -441,6 +471,7 @@ export type Database = {
           end_at: string
           id: string
           price_cents_snapshot: number
+          professional_id: string | null
           public_code: string
           service_id: string
           service_name_snapshot: string
