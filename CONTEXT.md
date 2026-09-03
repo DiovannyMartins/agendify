@@ -12,6 +12,14 @@ _Avoid_: Empresa, comerciante, prestador, estabelecimento
 Pessoa que reserva um serviço. Não possui conta; os dados são coletados no fluxo de reserva.
 _Avoid_: Usuário, consumidor, lead, paciente
 
+**Profissional**:
+Profissional que atende dentro de um negócio. No MVP possui agenda própria (availability, slots e reservas por profissional) e é um recurso gerenciado pelo dono, sem login próprio. O dono é um profissional por padrão.
+_Avoid_: Funcionário, atendente, prestador, recurso, staff, colaborador
+
+**Equipe**:
+Conjunto de profissionais ativos de um negócio. Não é uma conta; é o agrupamento de quem atende.
+_Avoid_: Time, colaboradores, staff
+
 **Serviço**:
 O que o negócio oferece: nome, duração e preço. Pode ser desativado (is_active = false), nunca excluído quando há histórico.
 _Avoid_: Produto, item
