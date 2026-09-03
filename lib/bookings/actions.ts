@@ -49,5 +49,6 @@ export async function updateBookingStatus(
   if (error) return { ok: false, message: "Não foi possível atualizar a reserva." };
 
   revalidatePath("/dashboard/agenda");
+  revalidatePath("/dashboard/clientes");
   return { ok: true };
 }

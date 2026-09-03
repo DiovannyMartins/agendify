@@ -22,6 +22,7 @@ export default defineConfig({
         },
       },
       {
+        resolve: { tsconfigPaths: true },
         test: {
           name: "integration",
           environment: "node",

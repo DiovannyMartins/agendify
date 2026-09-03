@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClock, CalendarDays, Users, Blocks, CalendarPlus, Settings, Sparkles } from "lucide-react";
+import { CalendarClock, CalendarDays, Users, UserRound, Blocks, CalendarPlus, Settings, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CopyPublicLink } from "@/components/copy-public-link";
 import { logout } from "@/lib/auth/actions";
@@ -12,6 +12,7 @@ const links = [
   { href: "/dashboard/servicos", label: "Serviços", icon: Sparkles },
   { href: "/dashboard/equipe", label: "Equipe", icon: Users },
   { href: "/dashboard/agenda", label: "Reservas", icon: CalendarDays },
+  { href: "/dashboard/clientes", label: "Clientes", icon: UserRound },
   { href: "/dashboard/bloqueios", label: "Bloqueios", icon: Blocks },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
 ];

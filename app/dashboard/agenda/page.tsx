@@ -3,31 +3,49 @@ import { getCurrentBusiness } from "@/lib/business/queries";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, CalendarClock } from "lucide-react";
-import { AgendaList } from "./agenda-list";
+import { toLocalDate } from "@/lib/booking/availability";
+import { filterAgenda } from "@/lib/agenda/view";
+import { AgendaView } from "./agenda-view";
 
 export default async function AgendaPage() {
   const business = await getCurrentBusiness();
   if (!business) redirect("/dashboard/setup");
 
   const supabase = await createClient();
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("business_id", business.id)
-    .order("start_at", { ascending: true });
+  const [{ data: bookings }, { data: professionals }, { data: availability }] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("*")
+      .eq("business_id", business.id)
+      .order("start_at", { ascending: true }),
+    supabase
+      .from("professionals")
+      .select("id, name, is_active")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("availability")
+      .select("weekday, start_time, end_time, professional_id")
+      .eq("business_id", business.id),
+  ]);
 
   const list = bookings ?? [];
+  const tz = business.timezone;
   const now = new Date();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
 
-  const todayBookings = list.filter(
-    (b) => b.status !== "cancelled" && new Date(b.start_at) >= todayStart && new Date(b.start_at) <= new Date(todayStart.getTime() + 86400000),
+  // "Today" is measured in the business timezone, not the server's.
+  const todayKey = toLocalDate(now, tz);
+  const todayBookings = filterAgenda(list, {
+    tz,
+    filters: { dateKey: todayKey },
+  }).filter((b) => b.status !== "cancelled");
+
+  const upcoming = list.filter(
+    (b) => b.status === "confirmed" && new Date(b.start_at) >= now,
   );
-  const upcoming = list.filter((b) => b.status === "confirmed" && new Date(b.start_at) >= now);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <h1 className="text-2xl font-semibold">Reservas</h1>
       <p className="mt-1 text-muted-foreground">Acompanhe e gerencie seus atendimentos.</p>
 
@@ -58,7 +76,13 @@ export default async function AgendaPage() {
         </Card>
       </div>
 
-      <AgendaList bookings={list} timezone={business.timezone} />
+      <AgendaView
+        bookings={list}
+        professionals={professionals ?? []}
+        availability={availability ?? []}
+        timezone={tz}
+        slotIntervalMinutes={business.slot_interval_minutes}
+      />
     </div>
   );
 }
