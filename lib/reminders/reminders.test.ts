@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { formatWhen } from "@/lib/format/when";
 import {
   REMINDER_LEAD_MINUTES,
   buildReminderEmail,
-  formatReminderDateTime,
   isReminderDue,
   prepareReminderEmails,
   type ReminderCandidateRow,
@@ -78,9 +78,9 @@ describe("prepareReminderEmails", () => {
   });
 });
 
-describe("formatReminderDateTime", () => {
+describe("formatWhen (datas renderizadas no fuso do negócio)", () => {
   it("renders the appointment in the business timezone (UTC-3 -> 15:00)", () => {
-    expect(formatReminderDateTime("2026-05-10T18:00:00Z", "America/Sao_Paulo")).toBe("10/05/2026 às 15:00");
+    expect(formatWhen("2026-05-10T18:00:00Z", "America/Sao_Paulo")).toBe("10/05/2026 às 15:00");
   });
 });
 

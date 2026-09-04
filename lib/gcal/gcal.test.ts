@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGoogleCalendarUrl, buildIcsString, type GcalBooking } from "@/lib/gcal/gcal";
+import { buildGoogleCalendarUrl, buildIcsFeed, buildIcsString, type GcalBooking } from "@/lib/gcal/gcal";
 
 const booking: GcalBooking = {
   summary: "Corte de cabelo",
@@ -58,5 +58,22 @@ describe("buildIcsString (INC-3: .ics da reserva)", () => {
   it("uses CRLF line endings as RFC 5545 requires", () => {
     const ics = buildIcsString(booking);
     expect(ics).toContain("\r\n");
+  });
+});
+
+describe("buildIcsFeed (export de várias reservas do dono)", () => {
+  it("renders one VEVENT per booking inside a shared VCALENDAR", () => {
+    const feed = buildIcsFeed([booking, { ...booking, summary: "Barba", startAt: "2026-09-01T21:00:00.000Z", endAt: "2026-09-01T21:30:00.000Z" }]);
+    expect(feed).toContain("BEGIN:VCALENDAR");
+    expect(feed).toContain("END:VCALENDAR");
+    expect(feed.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(feed).toContain("SUMMARY:Corte de cabelo");
+    expect(feed).toContain("SUMMARY:Barba");
+    expect(feed).toContain("\r\n");
+  });
+
+  it("gives each event a deterministic UID based on start + summary", () => {
+    const feed = buildIcsFeed([booking]);
+    expect(feed).toContain("UID:agendify-20260901T200000Z-Corte de cabelo");
   });
 });

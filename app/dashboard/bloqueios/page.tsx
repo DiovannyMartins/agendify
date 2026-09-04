@@ -5,11 +5,21 @@ import { BlockForm, BlockRow } from "./block-form";
 export default async function BloqueiosPage() {
   const business = await getCurrentBusiness();
   const supabase = await createClient();
-  const { data: blocks } = await supabase
-    .from("availability_blocks")
-    .select("*")
-    .eq("business_id", business?.id ?? "")
-    .order("start_at", { ascending: false });
+  const [{ data: blocks }, { data: professionals }] = await Promise.all([
+    supabase
+      .from("availability_blocks")
+      .select("*")
+      .eq("business_id", business?.id ?? "")
+      .order("start_at", { ascending: false }),
+    supabase
+      .from("professionals")
+      .select("id, name")
+      .eq("business_id", business?.id ?? "")
+      .order("created_at", { ascending: true }),
+  ]);
+  const professionalName: Record<string, string> = {};
+  for (const p of professionals ?? []) professionalName[p.id] = p.name;
+  const formProfessionals = (professionals ?? []).map((p) => ({ id: p.id, name: p.name }));
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -19,7 +29,7 @@ export default async function BloqueiosPage() {
       </p>
 
       <div className="mt-6 rounded-xl border border-border p-4">
-        <BlockForm />
+        <BlockForm professionals={formProfessionals} />
       </div>
 
       {blocks && blocks.length > 0 && (
@@ -32,6 +42,7 @@ export default async function BloqueiosPage() {
               endAt={block.end_at}
               reason={block.reason}
               timezone={business?.timezone ?? "UTC"}
+              professionalName={block.professional_id ? professionalName[block.professional_id] : undefined}
             />
           ))}
         </div>

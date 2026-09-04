@@ -9,6 +9,7 @@ import {
 } from "@/lib/bookings/lookup";
 import { verifyCancelToken } from "@/lib/bookings/cancel";
 import { isWaitlistEligible, parseWaitlistInput } from "@/lib/waitlist/waitlist";
+import { getActiveProfessional } from "@/lib/team/professionals";
 import {
   computeAvailableSlots,
   localDayRangeUtc,
@@ -39,36 +40,9 @@ export async function createBooking(input: {
 }): Promise<ActionResult> {
   // Server-authoritative flow: the admin client reads blocks/bookings of any
   // business (anonymous RLS would block those reads) for revalidation.
-  const supabase = createAdminClient();
-
-  // Anti-bot: when TURNSTILE_SECRET_KEY is configured, require a valid token.
-  const gate = await verifyTurnstile(input.cfTurnstileToken);
-  if (!gate.ok) {
-    return { ok: false, code: "captcha_failed", message: "Verificação humana falhou. Tente novamente." };
-  }
-
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("*")
-    .eq("slug", input.slug)
-    .eq("is_active", true)
-    .single();
-
-  if (!business) {
-    return { ok: false, code: "not_found", message: "Página não encontrada." };
-  }
-
-  // Rate limit before expensive work, keyed on IP+business and a business-wide
-  // aggregate (never only on the customer phone).
-  const ip = await getClientIp();
-  const allowed = await enforceRateLimit(supabase, ip, business.id);
-  if (!allowed) {
-    return {
-      ok: false,
-      code: "rate_limited",
-      message: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
-    };
-  }
+  const preamble = await resolvePublicBusinessAndRateLimit(input.slug, input.cfTurnstileToken);
+  if (!preamble.ok) return preamble.result;
+  const { supabase, business } = preamble;
 
   const startAtIso = zonedTimeToUtc(input.date, input.startTime, business.timezone);
 
@@ -105,13 +79,8 @@ export async function createBooking(input: {
   // missing OR deactivated professional surfaces as a single `professional_not_found`
   // (the public page only lists active professionals, so this only fires when the
   // professional is deactivated mid-session).
-  const { data: professional } = await supabase
-    .from("professionals")
-    .select("id, business_id, is_active")
-    .eq("id", input.professionalId)
-    .eq("business_id", business.id)
-    .single();
-  if (!professional || !professional.is_active) {
+  const professional = await getActiveProfessional(supabase, business.id, input.professionalId);
+  if (!professional) {
     return { ok: false, code: "professional_not_found", message: "Profissional indisponível." };
   }
 
@@ -297,33 +266,12 @@ export async function joinWaitlist(input: {
   customerEmail?: string;
   cfTurnstileToken?: string;
 }): Promise<ActionResult> {
-  const supabase = createAdminClient();
-
-  const gate = await verifyTurnstile(input.cfTurnstileToken);
-  if (!gate.ok) {
-    return { ok: false, code: "captcha_failed", message: "Verificação humana falhou. Tente novamente." };
-  }
-
-  const { data: business } = await supabase
-    .from("businesses")
-    .select("*")
-    .eq("slug", input.slug)
-    .eq("is_active", true)
-    .single();
-
-  if (!business) {
-    return { ok: false, code: "not_found", message: "Página não encontrada." };
-  }
-
-  const ip = await getClientIp();
-  const allowed = await enforceRateLimit(supabase, ip, business.id);
-  if (!allowed) {
-    return {
-      ok: false,
-      code: "rate_limited",
-      message: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
-    };
-  }
+  // Same server-authoritative preamble as createBooking: this is an anonymous
+  // write, so anti-bot, business resolution and the fail-closed reservation
+  // limiter apply identically.
+  const preamble = await resolvePublicBusinessAndRateLimit(input.slug, input.cfTurnstileToken);
+  if (!preamble.ok) return preamble.result;
+  const { business } = preamble;
 
   const startAt = zonedTimeToUtc(input.date, input.startTime, business.timezone);
 
@@ -343,6 +291,7 @@ export async function joinWaitlist(input: {
     return { ok: false, code: "no_future", message: "Esse horário já passou e não pode entrar na lista de espera." };
   }
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("join_waitlist", {
     p_business_id: business.id,
     p_professional_id: parsed.data.professionalId,
@@ -362,6 +311,54 @@ export async function joinWaitlist(input: {
   }
 
   return { ok: true, message: "Você entrou na lista de espera deste horário." };
+}
+
+// Shared preamble for the anonymous public writes (createBooking, joinWaitlist):
+// anti-bot gate (fail-closed when Turnstile is configured), resolve the active
+// business by slug, and apply the fail-closed reservation rate limit. Returns the
+// admin client and the resolved business, or an `ActionResult` error to surface.
+type ResolvedBusiness = {
+  id: string;
+  timezone: string;
+  slot_interval_minutes: number;
+  min_notice_minutes: number;
+  booking_window_days: number;
+};
+
+async function resolvePublicBusinessAndRateLimit(
+  slug: string,
+  cfTurnstileToken?: string,
+): Promise<{ ok: true; supabase: ServerClient; business: ResolvedBusiness } | { ok: false; result: ActionResult }> {
+  const supabase = createAdminClient();
+
+  const gate = await verifyTurnstile(cfTurnstileToken);
+  if (!gate.ok) {
+    return { ok: false, result: { ok: false, code: "captcha_failed", message: "Verificação humana falhou. Tente novamente." } };
+  }
+
+  const { data: business } = await supabase
+    .from("businesses")
+    .select("*")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .single();
+
+  if (!business) {
+    return { ok: false, result: { ok: false, code: "not_found", message: "Página não encontrada." } };
+  }
+
+  // Rate limit before expensive work, keyed on IP+business and a business-wide
+  // aggregate (never only on the customer phone).
+  const ip = await getClientIp();
+  const allowed = await enforceRateLimit(supabase, ip, business.id);
+  if (!allowed) {
+    return {
+      ok: false,
+      result: { ok: false, code: "rate_limited", message: "Muitas tentativas. Aguarde alguns minutos e tente novamente." },
+    };
+  }
+
+  return { ok: true, supabase, business };
 }
 
 type SlotRange = {

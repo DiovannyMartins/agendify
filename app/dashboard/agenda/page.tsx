@@ -2,9 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, CalendarClock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarDays, CalendarClock, Download } from "lucide-react";
 import { toLocalDate } from "@/lib/booking/availability";
 import { filterAgenda } from "@/lib/agenda/view";
+import { buildIcsFeed, type GcalBooking } from "@/lib/gcal/gcal";
 import { AgendaView } from "./agenda-view";
 
 export default async function AgendaPage() {
@@ -44,10 +46,33 @@ export default async function AgendaPage() {
     (b) => b.status === "confirmed" && new Date(b.start_at) >= now,
   );
 
+  // Owner calendar export (INC-3 / US25): the business's future active
+  // reservations as an importable .ics feed, matched to the owner's own calendar.
+  const feedBookings: GcalBooking[] = upcoming.map((b) => ({
+    summary: b.service_name_snapshot,
+    startAt: b.start_at,
+    endAt: b.end_at,
+    timezone: business.timezone,
+  }));
+  const icsFeed = buildIcsFeed(feedBookings);
+  const icsHref = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsFeed)}`;
+
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="text-2xl font-semibold">Reservas</h1>
-      <p className="mt-1 text-muted-foreground">Acompanhe e gerencie seus atendimentos.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Reservas</h1>
+          <p className="mt-1 text-muted-foreground">Acompanhe e gerencie seus atendimentos.</p>
+        </div>
+        {upcoming.length > 0 && (
+          <a href={icsHref} download="agendify-agenda.ics">
+            <Button size="sm" variant="outline">
+              <Download className="size-4" />
+              Exportar agenda (.ics)
+            </Button>
+          </a>
+        )}
+      </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Card>

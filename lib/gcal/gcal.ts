@@ -15,6 +15,32 @@ export type GcalBooking = {
   timezone: string;
 };
 
+// A multi-event VCALENDAR feed (e.g. the business's active upcoming bookings),
+// for the owner to import into their own calendar. Each event carries a
+// deterministic UID so importing the same reservations twice does not duplicate.
+export function buildIcsFeed(bookings: GcalBooking[]): string {
+  const events = bookings.flatMap(buildSingleEvent);
+  return [...calendarHeader(), ...events, "END:VCALENDAR"].join("\r\n");
+}
+
+function buildSingleEvent(b: GcalBooking): string[] {
+  return [
+    "BEGIN:VEVENT",
+    `UID:agendify-${toGcalUtc(b.startAt)}-${escapeText(b.summary)}`,
+    `DTSTAMP:${toGcalUtc(new Date().toISOString())}`,
+    `DTSTART:${toGcalUtc(b.startAt)}`,
+    `DTEND:${toGcalUtc(b.endAt)}`,
+    `SUMMARY:${escapeText(b.summary)}`,
+    ...(b.location ? [`LOCATION:${escapeText(b.location)}`] : []),
+    ...(b.description ? [`DESCRIPTION:${escapeText(b.description)}`] : []),
+    "END:VEVENT",
+  ];
+}
+
+function calendarHeader(): string[] {
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Agendify//Agendamento//PT-BR"];
+}
+
 // Google Calendar "add to calendar" template URL (action=TEMPLATE). Public and
 // credential-free; opens the new-event dialog pre-filled for the visitor.
 export function buildGoogleCalendarUrl(b: GcalBooking): string {
@@ -29,26 +55,11 @@ export function buildGoogleCalendarUrl(b: GcalBooking): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-// RFC 5545 VCALENDAR for the booking (downloadable file). Uses UTC Z timestamps
-// so a consumer importing the .ics gets the exact moment regardless of their own
-// timezone; the business timezone is kept for framing/display context.
+// RFC 5545 VCALENDAR for a single booking (downloadable file). Uses UTC Z
+// timestamps so a consumer importing the .ics gets the exact moment regardless of
+// their own timezone; the business timezone is kept for framing/display context.
 export function buildIcsString(b: GcalBooking): string {
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Agendify//Agendamento//PT-BR",
-    "BEGIN:VEVENT",
-    `UID:${b.startAt}-${b.summary}`,
-    `DTSTAMP:${toGcalUtc(new Date().toISOString())}`,
-    `DTSTART:${toGcalUtc(b.startAt)}`,
-    `DTEND:${toGcalUtc(b.endAt)}`,
-    `SUMMARY:${escapeText(b.summary)}`,
-    ...(b.location ? [`LOCATION:${escapeText(b.location)}`] : []),
-    ...(b.description ? [`DESCRIPTION:${escapeText(b.description)}`] : []),
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ];
-  return lines.join("\r\n");
+  return [...calendarHeader(), ...buildSingleEvent(b), "END:VCALENDAR"].join("\r\n");
 }
 
 // `2026-09-01T20:00:00.000Z` -> `20260901T200000Z` (Google calendar / ICS basic

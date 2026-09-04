@@ -12,6 +12,8 @@
 
 export const REMINDER_LEAD_MINUTES = 24 * 60;
 
+import { formatWhen } from "@/lib/format/when";
+
 export type ReminderCandidateRow = {
   id: string;
   business_id: string;
@@ -52,26 +54,9 @@ export function prepareReminderEmails(
     .map((row) => buildReminderEmail(row));
 }
 
-// Deterministic rendering of the appointment in the business timezone so email
-// content is stable and testable: "dd/mm/yyyy às HH:mm".
-export function formatReminderDateTime(iso: string, timezone: string): string {
-  const parts = new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  }).formatToParts(new Date(iso));
-
-  const value = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${value("day")}/${value("month")}/${value("year")} às ${value("hour")}:${value("minute")}`;
-}
-
 export function buildReminderEmail(row: ReminderCandidateRow): ReminderEmail {
   const to = row.customer_email_snapshot!;
-  const when = formatReminderDateTime(row.start_at, row.business_timezone);
+  const when = formatWhen(row.start_at, row.business_timezone);
   return {
     bookingId: row.id,
     to,

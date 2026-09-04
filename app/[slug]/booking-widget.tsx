@@ -86,13 +86,6 @@ export function BookingWidget({
     setSelectedSlot(null);
     setSlots([]);
     resetWaitlist();
-    if (value && serviceId && professionalId) {
-      startTransition(() => {
-        getSlotsForDate(businessId, professionalId, serviceId, value).then((res) =>
-          setSlots(res.available ?? []),
-        );
-      });
-    }
   }
 
   function resetWaitlist() {
