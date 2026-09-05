@@ -141,6 +141,9 @@ test("public booking flow: reserve, confirm in dashboard, release on cancel", as
 
   await page.waitForURL(/\/dashboard/);
   await page.goto(`${BASE_URL}/dashboard/agenda`);
+  // The agenda (INC-1) is date-filtered and defaults to today, so jump to the
+  // reservation's date before asserting it is listed.
+  await page.getByLabel("Data").fill(dateStr);
   await expect(page.getByText("Corte")).toBeVisible();
 
   // 4. Cancel the booking and confirm the slot is released.
