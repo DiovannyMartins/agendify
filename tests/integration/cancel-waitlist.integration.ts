@@ -112,7 +112,7 @@ describe("cancel_booking_by_public_code (INC-3)", () => {
 
   it("rejects cancelling a non-existent public code", async () => {
     const { error } = await admin.rpc("cancel_booking_by_public_code", {
-      p_code: "65925dbb-ab9d-42eb-832a-030c1b28d1e4",
+      p_code: "ZZZZZZZZ",
     });
     expect(error).not.toBeNull();
     expect(String(error?.message).toLowerCase()).toMatch(/not_found/i);
@@ -120,7 +120,7 @@ describe("cancel_booking_by_public_code (INC-3)", () => {
 
   it("anon CANNOT execute the cancel RPC directly", async () => {
     const anon = anonClient();
-    const { error } = await anon.rpc("cancel_booking_by_public_code", { p_code: "65925dbb-ab9d-42eb-832a-030c1b28d1e4" });
+    const { error } = await anon.rpc("cancel_booking_by_public_code", { p_code: "ZZZZZZZZ" });
     expect(error).not.toBeNull();
   });
 });

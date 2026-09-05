@@ -89,7 +89,7 @@ test("public booking flow: reserve, confirm in dashboard, release on cancel", as
   await expect(page.getByText("Reserva confirmada!")).toBeVisible();
   const confUrl = new URL(page.url());
   publicCode = confUrl.searchParams.get("code")!;
-  expect(publicCode).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(publicCode).toMatch(/^[0-9A-HJKMNPQRSTVWXYZ]{8}$/);
 
   // The reservation is bound to the business, not to any professional.
   const read = createClient(SUPABASE_URL, SUPABASE_SECRET, {
@@ -136,12 +136,12 @@ test("public consultation shows the booking by code", async ({ page }) => {
 
   // 3. An invalid code surfaces a friendly error.
   await page.getByRole("button", { name: "Consultar outra reserva" }).click();
-  await page.getByLabel("Código da reserva").fill("not-a-uuid");
+  await page.getByLabel("Código da reserva").fill("not-a-code");
   await page.getByRole("button", { name: "Consultar" }).click();
   await expect(page.getByText("Informe um código de reserva válido.")).toBeVisible();
 
-  // 4. An unknown code reports not found.
-  await page.getByLabel("Código da reserva").fill("ffffffff-ffff-ffff-ffff-ffffffffffff");
+  // 4. An unknown (but well-formed) code reports not found.
+  await page.getByLabel("Código da reserva").fill("ZZZZZZZZ");
   await page.getByRole("button", { name: "Consultar" }).click();
   await expect(page.getByText("Nenhuma reserva encontrada com esse código.")).toBeVisible();
 });

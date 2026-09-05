@@ -115,16 +115,26 @@ describe("bookingSchema", () => {
 });
 
 describe("publicCodeSchema", () => {
-  it("accepts a valid UUID public code", () => {
-    expect(publicCodeSchema.safeParse("65925dbb-ab9d-42eb-832a-030c1b28d1e4").success).toBe(true);
+  it("accepts a valid short public code", () => {
+    expect(publicCodeSchema.safeParse("AB12CD34").success).toBe(true);
   });
 
-  it("trims surrounding whitespace", () => {
-    expect(publicCodeSchema.safeParse("  65925dbb-ab9d-42eb-832a-030c1b28d1e4  ").success).toBe(true);
+  it("normalizes hyphens, whitespace and case", () => {
+    const parsed = publicCodeSchema.safeParse("  ab12-cd34  ");
+    expect(parsed.success).toBe(true);
+    expect(parsed.data).toBe("AB12CD34");
   });
 
-  it("rejects a non-uuid string", () => {
-    expect(publicCodeSchema.safeParse("not-a-uuid").success).toBe(false);
+  it("rejects a string with invalid characters", () => {
+    expect(publicCodeSchema.safeParse("AB12CD0O").success).toBe(false);
+  });
+
+  it("rejects a wrong-length code", () => {
+    expect(publicCodeSchema.safeParse("AB12CD").success).toBe(false);
+  });
+
+  it("rejects a non-code string", () => {
+    expect(publicCodeSchema.safeParse("not-a-code").success).toBe(false);
   });
 
   it("rejects an empty code", () => {

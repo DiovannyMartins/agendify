@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { StatusAction } from "./status-action";
 import type { AgendaBooking } from "@/lib/agenda/view";
 import { statusLabel } from "@/lib/bookings/status";
+import { formatPublicCode } from "@/lib/bookings/public-code";
 
 type BookingRow = AgendaBooking;
 
@@ -95,7 +96,7 @@ export function AgendaList({
                     {booking.customer_name_snapshot} · {booking.customer_phone_snapshot}
                   </p>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    Código: {booking.public_code}
+                    Código: {formatPublicCode(booking.public_code ?? "")}
                   </p>
                   {booking.cancel_reason && (
                     <p className="mt-1 text-xs text-muted-foreground">

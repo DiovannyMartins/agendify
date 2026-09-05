@@ -7,7 +7,7 @@ test("landing page shows hero and CTAs", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Entrar" }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Como funciona", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Planos", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Um único plano", exact: true })).toBeVisible();
 });
 
 test("auth and legal pages render", async ({ page }) => {

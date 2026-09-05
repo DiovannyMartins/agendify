@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CheckCircle2, CalendarClock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CopyCode } from "@/components/copy-code";
 import { deriveCancelToken } from "@/lib/bookings/cancel";
 import { CancelBooking } from "./cancel-booking";
 
@@ -54,9 +54,10 @@ async function ConfirmationContent({ code, slug }: { code: string; slug: string 
           </div>
         </div>
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          Guarde o código <Badge variant="secondary">{code}</Badge>
-        </p>
+        <div className="mt-4 flex flex-col items-center gap-1.5">
+          <p className="text-xs text-muted-foreground">Guarde o código da sua reserva</p>
+          <CopyCode code={code} />
+        </div>
         <div className="mt-6 flex flex-col items-center gap-3 text-sm font-medium">
           {cancelToken && <CancelBooking code={code} token={cancelToken} />}
         </div>

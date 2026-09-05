@@ -6,8 +6,8 @@ import { CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { TurnstileWidget } from "@/components/turnstile-widget";
+import { CopyCode } from "@/components/copy-code";
 import { consultBooking } from "@/lib/booking/actions";
 import type { ConsultState } from "@/lib/bookings/lookup";
 
@@ -54,9 +54,10 @@ function ConsultarFormInner({ slug, onReset }: { slug: string; onReset: () => vo
             </p>
           </div>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Guarde o código <Badge variant="secondary">{code.trim()}</Badge>
-        </p>
+        <div className="mt-4 flex flex-col items-center gap-1.5">
+          <p className="text-xs text-muted-foreground">Guarde o código da sua reserva</p>
+          <CopyCode code={code.trim()} />
+        </div>
         <button
           type="button"
           onClick={onReset}
@@ -82,7 +83,7 @@ function ConsultarFormInner({ slug, onReset }: { slug: string; onReset: () => vo
             name="code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="00000000-0000-0000-0000-000000000000"
+            placeholder="AB12-CD34"
             required
           />
         </div>

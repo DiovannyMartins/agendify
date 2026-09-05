@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidPublicCode, normalizePublicCode } from "@/lib/bookings/public-code";
 
 export const loginSchema = z.object({
   email: z.string().trim().email("Informe um e-mail válido."),
@@ -121,7 +122,13 @@ export const waitlistSchema = z.object({
 });
 export type WaitlistInput = z.infer<typeof waitlistSchema>;
 
-// Public reservation code. The code is a UUID used only on the public
-// confirmation screen; it must never authorize access to customer data.
-export const publicCodeSchema = z.string().trim().uuid("Informe um código de reserva válido.");
+// Public reservation code. An 8-char Crockford base32 code (XXXX-XXXX on screen),
+// normalized (hyphens/spaces stripped, uppercased) before validation. It is used
+// only on the public confirmation screen and must never authorize access to
+// customer data.
+export const publicCodeSchema = z
+  .string()
+  .trim()
+  .transform((s) => normalizePublicCode(s))
+  .refine(isValidPublicCode, "Informe um código de reserva válido.");
 export type PublicCodeInput = z.infer<typeof publicCodeSchema>;
