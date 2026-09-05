@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgendaView } from "./agenda-view";
 import type { AgendaBooking } from "@/lib/agenda/view";
@@ -26,22 +26,23 @@ function booking(over: Partial<AgendaBooking> & { id: string }): AgendaBooking {
 }
 
 describe("AgendaView list view", () => {
-  it("shows all reservations regardless of the selected date", () => {
-    // A booking far in the future: the default date filter (today) must not hide it.
-    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    const bookings = [booking({ id: "a", start_at: future, customer_name_snapshot: "Joana" })];
+  it("filters the list by the selected date, like the day/week grids", () => {
+    const onDay = booking({ id: "a", start_at: "2026-09-20T11:00:00.000Z", customer_name_snapshot: "Joana" });
+    const offDay = booking({ id: "b", start_at: "2026-09-21T11:00:00.000Z", customer_name_snapshot: "Pedro" });
 
     render(
       <AgendaView
-        bookings={bookings}
+        bookings={[onDay, offDay]}
         availability={[]}
         timezone={TZ}
         slotIntervalMinutes={30}
       />,
     );
 
+    // The date control must be live in the list view too.
+    fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-09-20" } });
+
     expect(screen.getByText(/Joana/)).toBeInTheDocument();
-    expect(screen.getByText("Corte")).toBeInTheDocument();
-    expect(screen.queryByText("Nenhuma reserva ainda")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Pedro/)).not.toBeInTheDocument();
   });
 });

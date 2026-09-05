@@ -57,8 +57,8 @@ export function AgendaView({
   const [dateKey, setDateKey] = useState(() => toLocalDate(new Date(), timezone));
   const [status, setStatus] = useState<StatusFilter>("");
 
-  // Status filter applies in every view. The date control is for the day/week
-  // grids only; the list ("Todas as reservas") always shows every reservation.
+  // Status and date filters apply in every view, so the list ("Todas as
+  // reservas") and the day/week grids all follow the selected date.
   const filtered = useMemo(
     () =>
       filterAgenda(bookings, {
@@ -68,6 +68,11 @@ export function AgendaView({
         },
       }),
     [bookings, timezone, status],
+  );
+
+  const listBookings = useMemo(
+    () => filterAgenda(filtered, { tz: timezone, filters: { dateKey } }),
+    [filtered, timezone, dateKey],
   );
 
   const dateStep = view === "week" ? 7 : 1;
@@ -142,7 +147,7 @@ export function AgendaView({
 
       <div className="mt-4">
         {view === "list" ? (
-          <AgendaList bookings={filtered} timezone={timezone} />
+          <AgendaList bookings={listBookings} timezone={timezone} />
         ) : (
           <AgendaGrid
             view={view}
