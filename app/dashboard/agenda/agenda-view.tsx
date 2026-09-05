@@ -32,6 +32,11 @@ const VIEWS: { mode: ViewMode; label: string; icon: typeof List }[] = [
   { mode: "week", label: "Semana", icon: CalendarRange },
 ];
 
+const STATUS_ITEMS: Record<string, string> = {
+  "": "Todos os status",
+  ...Object.fromEntries(Object.entries(STATUS_LABEL).map(([value, { label }]) => [value, label])),
+};
+
 function shiftDays(key: string, delta: number): string {
   const [y, m, d] = key.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + delta));
@@ -61,6 +66,11 @@ export function AgendaView({
     for (const p of professionals) map.set(p.id, p.name);
     return (id: string | null) => map.get(id ?? "") ?? "";
   }, [professionals]);
+
+  const professionalItems = useMemo(
+    () => ({ "": "Todos", ...Object.fromEntries(professionals.map((p) => [p.id, p.name])) }),
+    [professionals],
+  );
 
   // Status + professional filters apply in every view. Day/week fix the date on
   // top; the list also narrows to the selected date so the date control is live
@@ -136,7 +146,7 @@ export function AgendaView({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={status} onValueChange={(v) => setStatus((v ?? "") as StatusFilter)}>
+          <Select value={status} onValueChange={(v) => setStatus((v ?? "") as StatusFilter)} items={STATUS_ITEMS}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -150,7 +160,11 @@ export function AgendaView({
             </SelectContent>
           </Select>
 
-          <Select value={professionalId} onValueChange={(v) => setProfessionalId(v ?? "")}>
+          <Select
+            value={professionalId}
+            onValueChange={(v) => setProfessionalId(v ?? "")}
+            items={professionalItems}
+          >
             <SelectTrigger className="w-44">
               <SelectValue placeholder="Profissional" />
             </SelectTrigger>

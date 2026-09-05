@@ -27,6 +27,7 @@ import { upsertBusiness, type ActionResultState } from "@/lib/business/actions";
 import { businessFormSchema, type BusinessFormValues } from "@/lib/validation/schemas";
 
 const TIMEZONES = ["America/Sao_Paulo", "America/New_York", "Europe/Lisbon", "Europe/London"];
+const SLOT_INTERVALS: Record<string, string> = { "15": "15 min", "30": "30 min", "60": "60 min" };
 const INITIAL: ActionResultState = { ok: true, data: undefined };
 
 export function BusinessForm({
@@ -175,7 +176,7 @@ export function BusinessForm({
                 control={control}
                 name="slotIntervalMinutes"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange} items={SLOT_INTERVALS}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

@@ -16,10 +16,11 @@ export function ProfessionalSelect({
   professionals: { id: string; name: string }[];
   defaultValue: string;
 }) {
+  const items = Object.fromEntries(professionals.map((p) => [p.id, p.name]));
   return (
     <div className="space-y-2">
       <Label htmlFor="professionalId">Profissional</Label>
-      <Select name="professionalId" defaultValue={defaultValue}>
+      <Select name="professionalId" defaultValue={defaultValue} items={items}>
         <SelectTrigger>
           <SelectValue />
         </SelectTrigger>

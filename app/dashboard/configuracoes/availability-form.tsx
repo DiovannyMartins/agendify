@@ -26,6 +26,8 @@ export const WEEKDAYS: { value: number; label: string }[] = [
 
 const INITIAL = { ok: true } as ActionResult;
 
+const WEEKDAY_ITEMS = Object.fromEntries(WEEKDAYS.map((d) => [String(d.value), d.label]));
+
 export function AvailabilityForm({ professionals }: { professionals: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(setAvailability, INITIAL);
   const defaultValue = professionals[0]?.id ?? "";
@@ -35,7 +37,7 @@ export function AvailabilityForm({ professionals }: { professionals: { id: strin
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="weekday">Dia da semana</Label>
-          <Select name="weekday" defaultValue="2">
+          <Select name="weekday" defaultValue="2" items={WEEKDAY_ITEMS}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
