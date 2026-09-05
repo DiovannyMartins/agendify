@@ -6,28 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { StatusAction } from "./status-action";
+import type { AgendaBooking } from "@/lib/agenda/view";
+import { statusLabel } from "@/lib/bookings/status";
 
-type BookingRow = {
-  id: string;
-  status: string;
-  service_name_snapshot: string;
-  start_at: string;
-  duration_minutes_snapshot: number;
-  customer_name_snapshot: string;
-  customer_phone_snapshot: string;
-  public_code: string;
-  cancel_reason: string | null;
-};
-
-const STATUS_LABEL: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
-> = {
-  confirmed: { label: "Confirmada", variant: "default" },
-  completed: { label: "Concluída", variant: "secondary" },
-  cancelled: { label: "Cancelada", variant: "destructive" },
-  no_show: { label: "No-show", variant: "outline" },
-};
+type BookingRow = AgendaBooking;
 
 function formatBookingTime(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -37,7 +19,15 @@ function formatBookingTime(iso: string, tz: string): string {
   }).format(new Date(iso));
 }
 
-export function AgendaList({ bookings, timezone }: { bookings: BookingRow[]; timezone: string }) {
+export function AgendaList({
+  bookings,
+  timezone,
+  professionalNames,
+}: {
+  bookings: BookingRow[];
+  timezone: string;
+  professionalNames?: (id: string | null) => string;
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -45,7 +35,7 @@ export function AgendaList({ bookings, timezone }: { bookings: BookingRow[]; tim
     if (!q) return bookings;
     return bookings.filter((b) =>
       [
-        b.public_code,
+        b.public_code ?? "",
         b.customer_name_snapshot,
         b.customer_phone_snapshot,
         b.service_name_snapshot,
@@ -89,7 +79,7 @@ export function AgendaList({ bookings, timezone }: { bookings: BookingRow[]; tim
       ) : (
         <div className="space-y-3">
           {filtered.map((booking) => {
-            const status = STATUS_LABEL[booking.status] ?? STATUS_LABEL.confirmed;
+            const status = statusLabel(booking.status);
             return (
               <div
                 key={booking.id}
@@ -106,6 +96,11 @@ export function AgendaList({ bookings, timezone }: { bookings: BookingRow[]; tim
                   <p className="mt-1 text-sm">
                     {booking.customer_name_snapshot} · {booking.customer_phone_snapshot}
                   </p>
+                  {professionalNames?.(booking.professional_id) && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Profissional: {professionalNames(booking.professional_id)}
+                    </p>
+                  )}
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
                     Código: {booking.public_code}
                   </p>

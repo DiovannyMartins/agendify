@@ -153,5 +153,5 @@ MVP completo (Fases 1–9 da spec).
 
 ## Produção
 
-- **URL**: https://agendify-liart.vercel.app
-- **Supabase**: projeto `wgmmrpvrtgsxwdhtgfjy` (produção)
+- **URL**: `https://agendify-liart.vercel.app`
+- **Supabase**: projeto `<project-ref>` (produção) — manter em config privada, não no repositório

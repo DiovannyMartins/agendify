@@ -51,6 +51,11 @@ export const businessFormSchema = z.object({
 });
 export type BusinessFormValues = z.infer<typeof businessFormSchema>;
 
+export const professionalSchema = z.object({
+  name: z.string().trim().min(2, "Informe o nome do profissional.").max(80),
+});
+export type ProfessionalInput = z.infer<typeof professionalSchema>;
+
 export const serviceSchema = z.object({
   name: z.string().trim().min(2).max(80),
   description: z.string().trim().max(500).nullish(),
@@ -107,6 +112,20 @@ export type BookingInput = z.infer<typeof bookingSchema>;
 
 export const bookingStatusSchema = z.enum(["confirmed", "completed", "cancelled", "no_show"]);
 export type BookingStatus = z.infer<typeof bookingStatusSchema>;
+
+// Waitlist entry (INC-3). A customer who found a preferred slot occupied leaves
+// contact details + the desired slot (professional/service/start) so they can be
+// offered a re-opening. `start_at` is a UTC instant (ADR 0003), re-validated by
+// the server action that converts the business-local date+time selection.
+export const waitlistSchema = z.object({
+  professionalId: z.string().uuid(),
+  serviceId: z.string().uuid(),
+  startAt: z.string().datetime(),
+  customerName: z.string().trim().min(2).max(100),
+  customerPhone: z.string().trim().min(8).max(20),
+  customerEmail: z.string().trim().email().optional().or(z.literal("")),
+});
+export type WaitlistInput = z.infer<typeof waitlistSchema>;
 
 // Public reservation code. The code is a UUID used only on the public
 // confirmation screen; it must never authorize access to customer data.

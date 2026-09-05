@@ -13,6 +13,7 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "jsdom",
+          globals: true,
           setupFiles: ["./tests/setup.ts"],
           include: [
             "lib/**/*.test.{ts,tsx}",
@@ -22,6 +23,7 @@ export default defineConfig({
         },
       },
       {
+        resolve: { tsconfigPaths: true },
         test: {
           name: "integration",
           environment: "node",

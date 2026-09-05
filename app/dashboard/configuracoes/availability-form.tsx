@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { setAvailability, deleteAvailability, type ActionResult } from "@/lib/availability/actions";
+import { ProfessionalSelect } from "@/components/professional-select";
 
 export const WEEKDAYS: { value: number; label: string }[] = [
   { value: 1, label: "1 - Domingo" },
@@ -25,8 +26,9 @@ export const WEEKDAYS: { value: number; label: string }[] = [
 
 const INITIAL = { ok: true } as ActionResult;
 
-export function AvailabilityForm() {
+export function AvailabilityForm({ professionals }: { professionals: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(setAvailability, INITIAL);
+  const defaultValue = professionals[0]?.id ?? "";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -55,6 +57,9 @@ export function AvailabilityForm() {
           <Input id="endTime" name="endTime" type="time" defaultValue="18:00" required />
         </div>
       </div>
+      <div className="space-y-2">
+        <ProfessionalSelect professionals={professionals} defaultValue={defaultValue} />
+      </div>
       {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}
       <Button type="submit" disabled={pending} size="sm">
         {pending ? "Adicionando..." : "Adicionar faixa"}
@@ -68,17 +73,22 @@ export function AvailabilityRow({
   weekday,
   startTime,
   endTime,
+  professionalName,
 }: {
   id: string;
   weekday: number;
   startTime: string;
   endTime: string;
+  professionalName?: string;
 }) {
   const label = WEEKDAYS.find((d) => d.value === weekday)?.label ?? String(weekday);
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2 text-sm">
       <span>
         {label}: {startTime} – {endTime}
+        {professionalName && (
+          <span className="text-muted-foreground"> · {professionalName}</span>
+        )}
       </span>
       <button
         type="button"

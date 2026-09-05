@@ -3,10 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { businessSchema } from "@/lib/validation/schemas";
+import { describeTimezoneImpact, type TimezoneImpact } from "@/lib/business/timezone-lock";
 
-export type ActionResult<T = undefined> =
+export type ActionResult<T = undefined, E = undefined> =
   | { ok: true; data: T }
-  | { ok: false; code: string; message: string; fieldErrors?: Record<string, string[]> };
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      fieldErrors?: Record<string, string[]>;
+      details?: E;
+    };
 
 // §9.1 reserved slugs. Kept module-internal (not exported) because a "use server"
 // file may only export async functions.
@@ -39,10 +46,12 @@ type BusinessPayload = {
   description?: string | null;
 };
 
+export type ActionResultState = ActionResult<undefined, { affected: TimezoneImpact }>;
+
 export async function upsertBusiness(
-  _prev: ActionResult,
+  _prev: ActionResultState,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<ActionResultState> {
   const payload: BusinessPayload = {
     name: String(formData.get("name") ?? ""),
     slug: String(formData.get("slug") ?? "").trim().toLowerCase(),
@@ -89,17 +98,30 @@ export async function upsertBusiness(
   if (existing.data && existing.data.timezone !== parsed.data.timezone) {
     const { data: futureBookings } = await supabase
       .from("bookings")
-      .select("id", { count: "exact", head: true })
+      .select("id, start_at, service_name_snapshot, customer_name_snapshot")
       .eq("business_id", existing.data.id)
       .gt("start_at", new Date().toISOString())
-      .neq("status", "cancelled");
-    const count = (futureBookings as unknown as { length?: number })?.length ?? 0;
-    if (count > 0) {
+      .neq("status", "cancelled")
+      .order("start_at", { ascending: true });
+
+    const impact: TimezoneImpact = describeTimezoneImpact(
+      (futureBookings ?? []).map((row) => ({
+        id: row.id,
+        startAt: row.start_at,
+        serviceName: row.service_name_snapshot,
+        customerName: row.customer_name_snapshot,
+      })),
+      existing.data.timezone,
+    );
+
+    if (impact.count > 0) {
       return {
         ok: false,
         code: "TIMEZONE_LOCKED",
-        message: "Não é possível mudar o fuso com reservas futuras ativas. Cancele/reagende ou mantenha o fuso atual.",
+        message:
+          "Não é possível mudar o fuso horário com reservas futuras ativas. Cancele ou reagende as reservas abaixo ou mantenha o fuso atual.",
         fieldErrors: { timezone: ["Bloqueado com reservas futuras ativas."] },
+        details: { affected: impact },
       };
     }
   }
@@ -150,7 +172,7 @@ export async function upsertBusiness(
   return { ok: true, data: undefined };
 }
 
-function mapDbError(error: { code?: string; message: string }): ActionResult {
+function mapDbError(error: { code?: string; message: string }): ActionResultState {
   if (error.code === "23505") {
     return { ok: false, code: "SLUG_TAKEN", message: "Este endereço já está em uso." };
   }

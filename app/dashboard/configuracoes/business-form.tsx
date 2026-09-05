@@ -22,11 +22,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { upsertBusiness, type ActionResult } from "@/lib/business/actions";
+import { TimezoneLockWarning } from "@/components/timezone-lock-warning";
+import { upsertBusiness, type ActionResultState } from "@/lib/business/actions";
 import { businessFormSchema, type BusinessFormValues } from "@/lib/validation/schemas";
 
 const TIMEZONES = ["America/Sao_Paulo", "America/New_York", "Europe/Lisbon", "Europe/London"];
-const INITIAL: ActionResult = { ok: true, data: undefined };
+const INITIAL: ActionResultState = { ok: true, data: undefined };
 
 export function BusinessForm({
   initial,
@@ -34,16 +35,18 @@ export function BusinessForm({
   initial?: Partial<Record<string, unknown>> | null;
 }) {
   const router = useRouter();
-  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [state, setState] = useState<ActionResultState>(INITIAL);
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const slug = typeof initial?.slug === "string" ? initial.slug : "";
   const creating = !slug;
+  const savedTimezone = String(initial?.timezone ?? "America/Sao_Paulo");
 
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<BusinessFormValues>({
     resolver: zodResolver(businessFormSchema),
@@ -51,7 +54,7 @@ export function BusinessForm({
       name: String(initial?.name ?? ""),
       slug,
       phone: String(initial?.phone ?? ""),
-      timezone: String(initial?.timezone ?? "America/Sao_Paulo"),
+      timezone: savedTimezone,
       slotIntervalMinutes: String(initial?.slotIntervalMinutes ?? 30),
       minNoticeMinutes: Number(initial?.minNoticeMinutes ?? 120),
       bookingWindowDays: Number(initial?.bookingWindowDays ?? 60),
@@ -75,6 +78,9 @@ export function BusinessForm({
       setSubmitted(true);
       if (result.ok && creating) {
         router.push("/dashboard");
+      }
+      if (!result.ok && result.code === "TIMEZONE_LOCKED") {
+        setValue("timezone", savedTimezone);
       }
     });
   }
@@ -153,6 +159,10 @@ export function BusinessForm({
             </div>
           </div>
 
+          {!state.ok && state.code === "TIMEZONE_LOCKED" && state.details?.affected && (
+            <TimezoneLockWarning impact={state.details.affected} />
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="description">Descrição (opcional)</Label>
             <Textarea id="description" rows={3} maxLength={500} {...register("description")} />
@@ -223,7 +233,9 @@ export function BusinessForm({
               Negócio criado! Redirecionando para o seu painel...
             </p>
           )}
-          {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}
+          {!state.ok && state.code !== "TIMEZONE_LOCKED" && (
+            <p className="text-sm text-destructive">{state.message}</p>
+          )}
 
           <Button type="submit" disabled={pending}>
             {pending ? "Salvando..." : slug ? "Salvar alterações" : "Criar meu negócio"}

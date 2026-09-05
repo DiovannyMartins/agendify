@@ -12,6 +12,14 @@ _Avoid_: Empresa, comerciante, prestador, estabelecimento
 Pessoa que reserva um serviço. Não possui conta; os dados são coletados no fluxo de reserva.
 _Avoid_: Usuário, consumidor, lead, paciente
 
+**Profissional**:
+Profissional que atende dentro de um negócio. No MVP possui agenda própria (availability, slots e reservas por profissional) e é um recurso gerenciado pelo dono, sem login próprio. O dono é um profissional por padrão.
+_Avoid_: Funcionário, atendente, prestador, recurso, staff, colaborador
+
+**Equipe**:
+Conjunto de profissionais ativos de um negócio. Não é uma conta; é o agrupamento de quem atende.
+_Avoid_: Time, colaboradores, staff
+
 **Serviço**:
 O que o negócio oferece: nome, duração e preço. Pode ser desativado (is_active = false), nunca excluído quando há histórico.
 _Avoid_: Produto, item
@@ -51,6 +59,14 @@ _Avoid_: Cópia, imagem, ponto no tempo
 **Código público (public_code)**:
 UUID aleatório de uma reserva, usado apenas na tela pública de confirmação. Nunca autoriza acesso a dados do cliente.
 _Avoid_: Token, link de confirmação, código de rastreio
+
+**Token de cancelamento**:
+Capability HMAC-SHA256 derivada do public_code com segredo server-only; seu detentor (a tela de confirmação) cancela a própria reserva. Nunca é armazenado, nunca expõe dados pessoais e não é retornado pela consulta pública.
+_Avoid_: Token de sessão, código de cancelamento, hash
+
+**Lista de espera**:
+Fila de clientes que desejam um horário específico (profissional + serviço + início) quando ele está ocupado; deduplicada por (profissional, serviço, início, telefone). Não cria reserva automaticamente.
+_Avoid_: Fila, agendamento pendente, banco de espera
 
 **No-show**:
 Reserva em que o cliente não compareceu. Estado terminal que permanece no histórico.

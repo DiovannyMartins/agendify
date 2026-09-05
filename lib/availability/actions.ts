@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { availabilitySchema } from "@/lib/validation/schemas";
 import { getCurrentBusiness } from "@/lib/business/queries";
-import type { ActionResult } from "@/lib/business/actions";
-import { computeAvailableSlots, localDayRangeUtc, overlaps, toUtcRange, weekdayOf } from "@/lib/booking/availability";
+import { getActiveProfessional } from "@/lib/team/professionals";
+import type { ActionResult } from "@/lib/business/actions";import { computeAvailableSlots, localDayRangeUtc, overlaps, toUtcRange, weekdayOf } from "@/lib/booking/availability";
 import type { UtcRange } from "@/lib/booking/availability";
 
 export type { ActionResult };
@@ -18,6 +18,7 @@ export async function setAvailability(
   const weekday = Number(formData.get("weekday"));
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
+  const professionalId = String(formData.get("professionalId") ?? "");
 
   const parsed = availabilitySchema.safeParse({ weekday, startTime, endTime });
   if (!parsed.success) {
@@ -32,12 +33,19 @@ export async function setAvailability(
   const business = await getCurrentBusiness();
   if (!business) return { ok: false, code: "NO_BUSINESS", message: "Configure seu negócio primeiro." };
 
-  // §9.3: same business + day ranges must not overlap.
   const supabase = await createClient();
+  const professional = await getActiveProfessional(supabase, business.id, professionalId);
+  if (!professional) {
+    return { ok: false, code: "PROFESSIONAL_NOT_FOUND", message: "Profissional não encontrado ou inativo." };
+  }
+
+  // §9.3: same professional + day ranges must not overlap (agenda is per
+  // professional, ADR 0006), so two professionals may share the same slot.
   const { data: existing } = await supabase
     .from("availability")
     .select("*")
     .eq("business_id", business.id)
+    .eq("professional_id", professional.id)
     .eq("weekday", parsed.data.weekday)
     .eq("is_active", true);
 
@@ -53,6 +61,7 @@ export async function setAvailability(
 
   const { error } = await supabase.from("availability").insert({
     business_id: business.id,
+    professional_id: professional.id,
     weekday: parsed.data.weekday,
     start_time: parsed.data.startTime,
     end_time: parsed.data.endTime,
@@ -81,6 +90,7 @@ export async function createBlock(
   const startAt = String(formData.get("startAt") ?? "");
   const endAt = String(formData.get("endAt") ?? "");
   const reason = String(formData.get("reason") ?? "").trim() || null;
+  const professionalId = String(formData.get("professionalId") ?? "");
 
   if (!startAt || !endAt) {
     return { ok: false, code: "VALIDATION", message: "Informe o início e o fim do bloqueio." };
@@ -93,11 +103,18 @@ export async function createBlock(
   if (!business) return { ok: false, code: "NO_BUSINESS", message: "Configure seu negócio primeiro." };
 
   const supabase = await createClient();
-  // §9.4: cannot create a block overlapping a future active booking.
+  const professional = await getActiveProfessional(supabase, business.id, professionalId);
+  if (!professional) {
+    return { ok: false, code: "PROFESSIONAL_NOT_FOUND", message: "Profissional não encontrado ou inativo." };
+  }
+
+  // §9.4: cannot create a block overlapping a future active booking *of the same
+  // professional* (ADR 0006). Two professionals may share a time slot.
   const { data: conflicting } = await supabase
     .from("bookings")
     .select("id, customer_name_snapshot, start_at, end_at")
     .eq("business_id", business.id)
+    .eq("professional_id", professional.id)
     .neq("status", "cancelled")
     .gt("end_at", startAt)
     .lt("start_at", endAt);
@@ -113,6 +130,7 @@ export async function createBlock(
 
   const { error } = await supabase.from("availability_blocks").insert({
     business_id: business.id,
+    professional_id: professional.id,
     start_at: startAt,
     end_at: endAt,
     reason,
@@ -134,6 +152,7 @@ export async function deleteBlock(id: string): Promise<void> {
 
 export async function getSlotsForDate(
   businessId: string,
+  professionalId: string,
   serviceId: string,
   date: string,
 ): Promise<{ available: string[]; error?: string }> {
@@ -147,6 +166,11 @@ export async function getSlotsForDate(
     .single();
 
   if (!business || !business.is_active) return { available: [], error: "not_found" };
+
+  // The professional must exist, belong to this business and be active, so the
+  // public flow can never compute slots for a hidden or foreign professional.
+  const professional = await getActiveProfessional(supabase, businessId, professionalId);
+  if (!professional) return { available: [], error: "professional_not_found" };
 
   const { data: service } = await supabase
     .from("services")
@@ -167,10 +191,14 @@ export async function getSlotsForDate(
   // §10.2: interpret "now" and the requested date in the business timezone.
   const weekday = weekdayOf(date, business.timezone);
 
+  // Availability, blocks and occupied slots are resolved for the chosen
+  // professional only (§ADR 0006): two professionals in the same slot are
+  // allowed, so each professional's agenda is computed independently.
   const { data: intervals } = await supabase
     .from("availability")
     .select("start_time, end_time")
     .eq("business_id", businessId)
+    .eq("professional_id", professionalId)
     .eq("weekday", weekday)
     .eq("is_active", true);
 
@@ -181,12 +209,14 @@ export async function getSlotsForDate(
       .from("availability_blocks")
       .select("start_at, end_at")
       .eq("business_id", businessId)
+      .eq("professional_id", professionalId)
       .lt("start_at", day.end)
       .gt("end_at", day.start),
     supabase
       .from("bookings")
       .select("start_at, end_at")
       .eq("business_id", businessId)
+      .eq("professional_id", professionalId)
       .neq("status", "cancelled")
       .lt("start_at", day.end)
       .gt("end_at", day.start),

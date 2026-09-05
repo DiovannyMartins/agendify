@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { adminClient, anonClientForUser } from "./index";
+import { adminClient, anonClientForUser, retryOnFk } from "./index";
 
 // These are integration tests against the real Supabase project (§19.2).
 // RUN: npm run test:integration. Requires .env.local with valid keys.
@@ -13,24 +13,6 @@ let ownerId = "";
 let businessId = "";
 let serviceId = "";
 let otherUserId = "";
-
-// Retry the business upsert on the transient `businesses_owner_id_fkey` FK race
-// that can appear when the two integration files run in parallel against the
-// remote project. Production constraints are untouched.
-async function retryOnFk<T>(fn: () => Promise<T>, attempts = 6, delayMs = 250): Promise<T> {
-  let lastErr: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      lastErr = e;
-      const msg = String((e as { message?: unknown })?.message ?? e);
-      if (!/businesses_owner_id_fkey|23503/i.test(msg)) throw e;
-      await new Promise((r) => setTimeout(r, delayMs));
-    }
-  }
-  throw lastErr;
-}
 
 beforeAll(async () => {
   admin = adminClient();
