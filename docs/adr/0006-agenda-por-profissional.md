@@ -1,5 +1,7 @@
 # Agenda por profissional (equipe como recursos do negócio)
 
+> **Status: REVERTIDO (superseded).** Removido em favor de um agendamento único em nível de negócio (migração `20260914000000_remove_team_and_plan.sql`). O modelo de `professionals` e a agenda por `professional_id` foram retirados; disponibilidade, bloqueios e reservas são escopados por `business_id` apenas.
+
 A equipe é modelada como `professionals` — recursos gerenciados pelo dono, sem conta própria — e a agenda passa a ser por profissional: `availability.professional_id` substitui `business_id`, e a exclusion constraint anti-sobreposição migra de `(business_id, ...)` para `(professional_id, ...)`.
 
 Serviços permanecem no `business_id` (catálogo do negócio, preço único; todo profissional ativo pode atender). A migração cria um profissional padrão por negócio, semeado do `display_name` do dono, e associa a disponibilidade/reservas pré-existentes a ele.

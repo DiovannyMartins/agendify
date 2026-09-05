@@ -11,7 +11,6 @@ import {
   weekDateKeys,
   type AgendaBooking,
   type AvailabilityRow,
-  type Professional,
 } from "@/lib/agenda/view";
 import { statusLabel } from "@/lib/bookings/status";
 
@@ -37,7 +36,6 @@ export function AgendaGrid({
   dateKey,
   timezone,
   slotIntervalMinutes,
-  professionals,
   availability,
   filtered,
 }: {
@@ -45,7 +43,6 @@ export function AgendaGrid({
   dateKey: string;
   timezone: string;
   slotIntervalMinutes: number;
-  professionals: Professional[];
   availability: AvailabilityRow[];
   filtered: AgendaBooking[];
 }) {
@@ -65,7 +62,6 @@ export function AgendaGrid({
       dateKey={dateKey}
       timezone={timezone}
       slotIntervalMinutes={slotIntervalMinutes}
-      professionals={professionals}
       availability={availability}
       filtered={filtered}
     />
@@ -86,14 +82,12 @@ function DayGrid({
   dateKey,
   timezone,
   slotIntervalMinutes,
-  professionals,
   availability,
   filtered,
 }: {
   dateKey: string;
   timezone: string;
   slotIntervalMinutes: number;
-  professionals: Professional[];
   availability: AvailabilityRow[];
   filtered: AgendaBooking[];
 }) {
@@ -109,7 +103,7 @@ function DayGrid({
   const byCell = useMemo(() => {
     const map = new Map<string, AgendaBooking>();
     for (const booking of dayBookings) {
-      map.set(`${booking.professional_id ?? ""}|${bookingLocalTime(booking.start_at, timezone)}`, booking);
+      map.set(bookingLocalTime(booking.start_at, timezone), booking);
     }
     return map;
   }, [dayBookings, timezone]);
@@ -125,16 +119,7 @@ function DayGrid({
             <th className="sticky left-0 bg-muted/40 px-3 py-2 text-left font-medium text-muted-foreground">
               Hora
             </th>
-            {professionals.map((p) => (
-              <th key={p.id} className="px-3 py-2 text-left font-medium">
-                {p.name}
-                {!p.is_active && (
-                  <Badge variant="secondary" className="ml-2 align-middle">
-                    Inativo
-                  </Badge>
-                )}
-              </th>
-            ))}
+            <th className="px-3 py-2 text-left font-medium">Reserva</th>
           </tr>
         </thead>
         <tbody>
@@ -143,14 +128,9 @@ function DayGrid({
               <td className="sticky left-0 bg-card px-3 py-2 font-mono text-xs text-muted-foreground">
                 {time}
               </td>
-              {professionals.map((p) => {
-                const booking = byCell.get(`${p.id}|${time}`);
-                return (
-                  <td key={`${time}-${p.id}`} className="px-2 py-1.5 align-top">
-                    {booking && <BookingCell booking={booking} timezone={timezone} />}
-                  </td>
-                );
-              })}
+              <td className="px-2 py-1.5 align-top">
+                {byCell.get(time) && <BookingCell booking={byCell.get(time)!} timezone={timezone} />}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { BookingWidget } from "./booking-widget";
 import { CalendarClock } from "lucide-react";
 
@@ -25,16 +24,6 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
-  // Professionals are owner-scoped (anon RLS denies reads), so the public page
-  // lists the business's active professionals through the server-only client.
-  const admin = createAdminClient();
-  const { data: professionals } = await admin
-    .from("professionals")
-    .select("id, name")
-    .eq("business_id", business.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
-
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-muted/30">
       <div className="mx-auto max-w-5xl px-4 py-12 lg:px-6">
@@ -54,7 +43,6 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
         <BookingWidget
           businessId={business.id}
           slug={slug}
-          professionals={(professionals ?? []).map((p) => ({ id: p.id, name: p.name }))}
           services={(services ?? []).map((s) => ({
             id: s.id,
             name: s.name,

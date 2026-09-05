@@ -108,7 +108,6 @@ describe("filterAgenda", () => {
     duration_minutes_snapshot: over.duration_minutes_snapshot ?? 30,
     customer_name_snapshot: over.customer_name_snapshot ?? "Maria",
     customer_phone_snapshot: over.customer_phone_snapshot ?? "+5511900000000",
-    professional_id: over.professional_id ?? null,
   });
 
   it("filters by local date (tz-aware)", () => {
@@ -129,26 +128,17 @@ describe("filterAgenda", () => {
     expect(out.map((x) => x.id)).toEqual(["b"]);
   });
 
-  it("filters by professional", () => {
+  it("combines date and status", () => {
     const bookings = [
-      b({ id: "a", professional_id: "p1" }),
-      b({ id: "b", professional_id: "p2" }),
-    ];
-    const out = filterAgenda(bookings, { tz: SP, filters: { professionalId: "p2" } });
-    expect(out.map((x) => x.id)).toEqual(["b"]);
-  });
-
-  it("combines date, status and professional", () => {
-    const bookings = [
-      b({ id: "a", start_at: LATE_UTC, status: "confirmed", professional_id: "p1" }),
-      b({ id: "b", start_at: "2026-09-02T16:00:00.000Z", status: "completed", professional_id: "p1" }),
-      b({ id: "c", start_at: "2026-09-02T17:00:00.000Z", status: "confirmed", professional_id: "p2" }),
+      b({ id: "a", start_at: LATE_UTC, status: "confirmed" }),
+      b({ id: "b", start_at: "2026-09-02T16:00:00.000Z", status: "completed" }),
+      b({ id: "c", start_at: "2026-09-02T17:00:00.000Z", status: "confirmed" }),
     ];
     const out = filterAgenda(bookings, {
       tz: SP,
-      filters: { dateKey: "2026-09-02", status: "confirmed", professionalId: "p1" },
+      filters: { dateKey: "2026-09-02", status: "confirmed" },
     });
-    expect(out.map((x) => x.id)).toEqual([]);
+    expect(out.map((x) => x.id)).toEqual(["c"]);
   });
 
   it("no filters returns everything unchanged", () => {

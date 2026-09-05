@@ -14,20 +14,15 @@ export default async function AgendaPage() {
   if (!business) redirect("/dashboard/setup");
 
   const supabase = await createClient();
-  const [{ data: bookings }, { data: professionals }, { data: availability }] = await Promise.all([
+  const [{ data: bookings }, { data: availability }] = await Promise.all([
     supabase
       .from("bookings")
       .select("*")
       .eq("business_id", business.id)
       .order("start_at", { ascending: true }),
     supabase
-      .from("professionals")
-      .select("id, name, is_active")
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: true }),
-    supabase
       .from("availability")
-      .select("weekday, start_time, end_time, professional_id")
+      .select("weekday, start_time, end_time")
       .eq("business_id", business.id),
   ]);
 
@@ -103,7 +98,6 @@ export default async function AgendaPage() {
 
       <AgendaView
         bookings={list}
-        professionals={professionals ?? []}
         availability={availability ?? []}
         timezone={tz}
         slotIntervalMinutes={business.slot_interval_minutes}

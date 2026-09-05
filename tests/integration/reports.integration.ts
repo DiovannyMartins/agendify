@@ -19,14 +19,12 @@ const TO = "2099-06-01T00:00:00.000Z";
 let admin: ReturnType<typeof adminClient>;
 let ownerId = "";
 let businessId = "";
-let professionalId = "";
 let otherOwnerId = "";
 let serviceCorte = "";
 let serviceBarba = "";
 let serviceSobrancelha = "";
 
-// Bookings at distinct times on the (single) default professional. The worked
-// example mirrors lib/reports/reports.test.ts.
+// Bookings at distinct times. The worked example mirrors lib/reports/reports.test.ts.
 const PLAN: Array<{ at: string; service: string; name: string; price: number; status: ReportBooking["status"] }> = [
   { at: "2099-05-02T10:00:00.000Z", service: "corte", name: "Corte", price: 4000, status: "completed" },
   { at: "2099-05-02T11:00:00.000Z", service: "corte", name: "Corte", price: 4000, status: "completed" },
@@ -61,16 +59,12 @@ beforeAll(async () => {
         slot_interval_minutes: 30,
         min_notice_minutes: 0,
         booking_window_days: 60,
-        plan: "pro",
       })
       .select("*")
       .single();
     if (bizErr) throw new Error(`business insert: ${bizErr.message}`);
     return biz!.id;
   });
-
-  const { data: pros } = await admin.from("professionals").select("id").eq("business_id", businessId);
-  professionalId = pros![0].id;
 
   for (const [key, name, price] of [
     ["corte", "Corte", 4000],
@@ -104,7 +98,6 @@ beforeAll(async () => {
       .insert({
         business_id: businessId,
         service_id: serviceFor(plan.service),
-        professional_id: professionalId,
         customer_id: cust!.id,
         customer_name_snapshot: "Cliente",
         customer_phone_snapshot: phone,

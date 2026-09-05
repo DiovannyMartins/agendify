@@ -15,7 +15,6 @@ import {
   filterAgenda,
   type AgendaBooking,
   type AvailabilityRow,
-  type Professional,
 } from "@/lib/agenda/view";
 import type { BookingStatus } from "@/lib/bookings/transitions";
 import { STATUS_LABEL } from "@/lib/bookings/status";
@@ -45,13 +44,11 @@ function shiftDays(key: string, delta: number): string {
 
 export function AgendaView({
   bookings,
-  professionals,
   availability,
   timezone,
   slotIntervalMinutes,
 }: {
   bookings: AgendaBooking[];
-  professionals: Professional[];
   availability: AvailabilityRow[];
   timezone: string;
   slotIntervalMinutes: number;
@@ -59,32 +56,18 @@ export function AgendaView({
   const [view, setView] = useState<ViewMode>("list");
   const [dateKey, setDateKey] = useState(() => toLocalDate(new Date(), timezone));
   const [status, setStatus] = useState<StatusFilter>("");
-  const [professionalId, setProfessionalId] = useState("");
 
-  const professionalNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of professionals) map.set(p.id, p.name);
-    return (id: string | null) => map.get(id ?? "") ?? "";
-  }, [professionals]);
-
-  const professionalItems = useMemo(
-    () => ({ "": "Todos", ...Object.fromEntries(professionals.map((p) => [p.id, p.name])) }),
-    [professionals],
-  );
-
-  // Status + professional filters apply in every view. Day/week fix the date on
-  // top; the list also narrows to the selected date so the date control is live
-  // in every mode.
+  // Status filter applies in every view. Day/week fix the date on top; the list
+  // also narrows to the selected date so the date control is live in every mode.
   const filtered = useMemo(
     () =>
       filterAgenda(bookings, {
         tz: timezone,
         filters: {
           status: status || null,
-          professionalId: professionalId || null,
         },
       }),
-    [bookings, timezone, status, professionalId],
+    [bookings, timezone, status],
   );
 
   const listBookings = useMemo(
@@ -159,37 +142,18 @@ export function AgendaView({
               ))}
             </SelectContent>
           </Select>
-
-          <Select
-            value={professionalId}
-            onValueChange={(v) => setProfessionalId(v ?? "")}
-            items={professionalItems}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Profissional" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
-              {professionals.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
       <div className="mt-4">
         {view === "list" ? (
-          <AgendaList bookings={listBookings} timezone={timezone} professionalNames={professionalNames} />
+          <AgendaList bookings={listBookings} timezone={timezone} />
         ) : (
           <AgendaGrid
             view={view}
             dateKey={dateKey}
             timezone={timezone}
             slotIntervalMinutes={slotIntervalMinutes}
-            professionals={professionals}
             availability={availability}
             filtered={filtered}
           />

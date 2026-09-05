@@ -19,14 +19,12 @@ const FUTURE_B = "2099-03-10T16:00:00.000Z"; // future, then cancelled
 let admin: ReturnType<typeof adminClient>;
 let ownerId = "";
 let businessId = "";
-let professionalId = "";
 let serviceId = "";
 
 async function createBookingAt(startAt: string, phone: string) {
   const { data, error } = await admin.rpc("create_booking", {
     p_business_id: businessId,
     p_service_id: serviceId,
-    p_professional_id: professionalId,
     p_start_at: startAt,
     p_customer_name: "Cliente TZ",
     p_customer_phone: phone,
@@ -66,9 +64,6 @@ beforeAll(async () => {
     if (bizErr) throw new Error(`business insert: ${bizErr.message}`);
     return biz!.id;
   });
-
-  const { data: pros } = await admin.from("professionals").select("id").eq("business_id", businessId);
-  professionalId = pros![0].id;
 
   const { data: svc } = await admin
     .from("services")

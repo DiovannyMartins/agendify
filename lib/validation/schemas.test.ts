@@ -4,7 +4,6 @@ import {
   bookingSchema,
   businessSchema,
   loginSchema,
-  professionalSchema,
   publicCodeSchema,
   serviceSchema,
   signupSchema,
@@ -55,21 +54,6 @@ describe("serviceSchema", () => {
 
   it("rejects a too-long duration", () => {
     expect(serviceSchema.safeParse({ ...valid, durationMinutes: 500 }).success).toBe(false);
-  });
-});
-
-describe("professionalSchema", () => {
-  it("accepts a valid professional name", () => {
-    expect(professionalSchema.safeParse({ name: "João Silva" }).success).toBe(true);
-  });
-
-  it("rejects an empty/too-short name", () => {
-    expect(professionalSchema.safeParse({ name: "" }).success).toBe(false);
-    expect(professionalSchema.safeParse({ name: "A" }).success).toBe(false);
-  });
-
-  it("trims surrounding whitespace", () => {
-    expect(professionalSchema.safeParse({ name: "  João  " }).success).toBe(true);
   });
 });
 

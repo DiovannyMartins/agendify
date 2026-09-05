@@ -20,7 +20,6 @@ describe("isWaitlistEligible (INC-3: lista de espera só para horário futuro)",
 
 describe("parseWaitlistInput (INC-3)", () => {
   const valid = {
-    professionalId: "65925dbb-ab9d-42eb-832a-030c1b28d1e4",
     serviceId: "65925dbb-ab9d-42eb-832a-030c1b28d1e5",
     startAt: FUTURE,
     customerName: "Maria",
@@ -39,8 +38,7 @@ describe("parseWaitlistInput (INC-3)", () => {
     expect(parseWaitlistInput({ ...valid, customerEmail: "a@b.com" }).ok).toBe(true);
   });
 
-  it("rejects a non-uuid professional or service id", () => {
-    expect(parseWaitlistInput({ ...valid, professionalId: "x" }).ok).toBe(false);
+  it("rejects a non-uuid service id", () => {
     expect(parseWaitlistInput({ ...valid, serviceId: "x" }).ok).toBe(false);
   });
 

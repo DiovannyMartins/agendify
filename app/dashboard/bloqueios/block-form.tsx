@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBlock, deleteBlock, type ActionResult } from "@/lib/availability/actions";
-import { ProfessionalSelect } from "@/components/professional-select";
 
 const INITIAL = { ok: true } as ActionResult;
 
-export function BlockForm({ professionals }: { professionals: { id: string; name: string }[] }) {
+export function BlockForm() {
   const [state, formAction, pending] = useActionState(createBlock, INITIAL);
-  const defaultValue = professionals[0]?.id ?? "";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -24,9 +22,6 @@ export function BlockForm({ professionals }: { professionals: { id: string; name
           <Label htmlFor="endAt">Fim</Label>
           <Input id="endAt" name="endAt" type="datetime-local" required />
         </div>
-      </div>
-      <div className="space-y-2">
-        <ProfessionalSelect professionals={professionals} defaultValue={defaultValue} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="reason">Motivo (opcional)</Label>
@@ -46,14 +41,12 @@ export function BlockRow({
   endAt,
   reason,
   timezone,
-  professionalName,
 }: {
   id: string;
   startAt: string;
   endAt: string;
   reason: string | null;
   timezone: string;
-  professionalName?: string;
 }) {
   const fmt = (iso: string) =>
     new Intl.DateTimeFormat("pt-BR", {
@@ -66,7 +59,6 @@ export function BlockRow({
     <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2 text-sm">
       <span className="min-w-0">
         {fmt(startAt)} – {fmt(endAt)}
-        {professionalName && <span className="text-muted-foreground"> · {professionalName}</span>}
         {reason && <span className="text-muted-foreground"> · {reason}</span>}
       </span>
       <button

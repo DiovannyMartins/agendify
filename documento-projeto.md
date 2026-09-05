@@ -37,7 +37,7 @@ Esta versão preserva a proposta central do documento original e fecha as lacuna
 
 | **Tema** | **Decisão normativa** |
 | --- | --- |
-| Modelo do negócio | Um usuário autenticado é proprietário de exatamente um negócio no MVP. A estrutura separa usuário e negócio para permitir equipe no futuro. |
+| Modelo do negócio | Um usuário autenticado é proprietário de exatamente um negócio no MVP. A estrutura separa usuário e negócio para manter o negócio independente da autenticação. |
 | Confirmação da reserva | Ao concluir a reserva, o cliente vê uma tela de confirmação. E-mail/WhatsApp automáticos permanecem pós-MVP. |
 | Status inicial | Uma reserva válida nasce como “confirmed”. Não existe aprovação manual no fluxo padrão do MVP. |
 | Cancelamento pelo cliente | Fora do MVP. O profissional cancela pelo dashboard. |
@@ -92,7 +92,7 @@ João, barbeiro autônomo, 28 anos. Recebe reservas pelo WhatsApp e Instagram, p
 | Agenda organizada | Horários são calculados a partir de regras recorrentes, bloqueios e reservas existentes. |
 | Menos trabalho manual | Reduz a troca de mensagens para confirmar serviço, data e hora. |
 | Experiência profissional | Cada negócio possui página pública de reservas responsiva. |
-| Base para crescimento | Arquitetura preparada para lembretes, pagamentos, equipe, relatórios e calendário externo. |
+| Base para crescimento | Arquitetura preparada para lembretes, pagamentos, relatórios e calendário externo. |
 
 ## 4. Experiência do usuário
 
@@ -177,7 +177,6 @@ Subheadline: Receba agendamentos online, organize seus horários e ofereça uma 
 
 - Pagamento antecipado, sinal e cobrança recorrente.
 - Lembretes por e-mail, SMS ou WhatsApp.
-- Equipe com múltiplos profissionais/agendas.
 - Integração com Google Calendar.
 - Cupons, campanhas, lista de espera e relatórios avançados.
 - Aplicativo nativo/PWA como requisito obrigatório.
@@ -900,7 +899,6 @@ O MVP só pode ser marcado como concluído quando todos os itens abaixo forem ve
 - Lembretes automáticos por e-mail ou WhatsApp.
 - Pagamento antecipado ou sinal.
 - Planos de assinatura e billing.
-- Equipe com múltiplos profissionais e agendas independentes.
 - Feriados automáticos por calendário externo; o MVP já possui bloqueios manuais.
 - Relatórios de faturamento, serviços mais vendidos, cancelamentos e no-show.
 - Cupons e campanhas.
@@ -909,9 +907,9 @@ O MVP só pode ser marcado como concluído quando todos os itens abaixo forem ve
 - Cancelamento/reagendamento pelo cliente com token seguro.
 - PWA ou aplicativo móvel.
 
-### 24.1 Preparação para equipe
+### 24.1 Agendamento por negócio (sem equipe)
 
-A separação entre profiles e businesses evita acoplar definitivamente um negócio a dados de autenticação. Ao implementar equipe, a evolução recomendada é criar business_members e professionals/resources, e mover a constraint de sobreposição de business_id para professional_id/resource_id.
+O Agendify usa um agendamento único em nível de negócio: disponibilidade, bloqueios e reservas são escopados por `business_id`. A direção de equipe multi-profissional e o gate de plano (ver ADRs 0006/0007) foram removidos; a separação entre profiles e businesses permanece, mantendo o negócio independente da autenticação.
 
 ## 25. Por que o projeto é forte para portfólio
 

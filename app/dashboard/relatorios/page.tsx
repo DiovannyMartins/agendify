@@ -55,7 +55,6 @@ export default async function RelatoriosPage({
         </div>
       </div>
 
-      {result.status === "pro_gate" && <ProGate />}
       {result.status === "error" && <ErrorState />}
       {result.status === "ok" && <ReportBody key={result.key} report={result.report} />}
     </div>
@@ -148,7 +147,7 @@ function ReportBody({ report }: { report: BillingReport }) {
             <MailCheck className="size-4 text-primary" /> Lembretes por e-mail
           </CardTitle>
           <CardDescription>
-            Seus clientes recebem um lembrete quando a reserva está a até 24 horas (recurso Pro).
+            Seus clientes recebem um lembrete quando a reserva está a até 24 horas.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
@@ -156,28 +155,6 @@ function ReportBody({ report }: { report: BillingReport }) {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function ProGate() {
-  return (
-    <Card className="mt-6">
-      <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-        <Crown className="size-10 text-primary" />
-        <div className="space-y-1">
-          <p className="text-lg font-semibold">Relatórios e lembretes são recursos do plano Pro</p>
-          <p className="text-muted-foreground">
-            Atualize seu plano para acompanhar faturamento, serviços mais vendidos, taxas de cancelamento e no-show, e para enviar lembretes automáticos aos clientes.
-          </p>
-        </div>
-        <Link
-          href="/dashboard/configuracoes"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          Ver planos
-        </Link>
-      </CardContent>
-    </Card>
   );
 }
 

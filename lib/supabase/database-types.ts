@@ -45,7 +45,6 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean
-          professional_id: string | null
           start_time: string
           weekday: number
         }
@@ -54,7 +53,6 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean
-          professional_id?: string | null
           start_time: string
           weekday: number
         }
@@ -63,7 +61,6 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean
-          professional_id?: string | null
           start_time?: string
           weekday?: number
         }
@@ -75,13 +72,6 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "availability_professional_business_fkey"
-            columns: ["professional_id", "business_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["id", "business_id"]
-          },
         ]
       }
       availability_blocks: {
@@ -90,7 +80,6 @@ export type Database = {
           created_at: string
           end_at: string
           id: string
-          professional_id: string | null
           reason: string | null
           start_at: string
         }
@@ -99,7 +88,6 @@ export type Database = {
           created_at?: string
           end_at: string
           id?: string
-          professional_id?: string | null
           reason?: string | null
           start_at: string
         }
@@ -108,7 +96,6 @@ export type Database = {
           created_at?: string
           end_at?: string
           id?: string
-          professional_id?: string | null
           reason?: string | null
           start_at?: string
         }
@@ -119,13 +106,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blocks_professional_business_fkey"
-            columns: ["professional_id", "business_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["id", "business_id"]
           },
         ]
       }
@@ -161,7 +141,6 @@ export type Database = {
           end_at: string
           id: string
           price_cents_snapshot: number
-          professional_id: string | null
           public_code: string
           reminder_sent_at: string | null
           service_id: string
@@ -183,7 +162,6 @@ export type Database = {
           end_at: string
           id?: string
           price_cents_snapshot: number
-          professional_id?: string | null
           public_code?: string
           reminder_sent_at?: string | null
           service_id: string
@@ -205,7 +183,6 @@ export type Database = {
           end_at?: string
           id?: string
           price_cents_snapshot?: number
-          professional_id?: string | null
           public_code?: string
           reminder_sent_at?: string | null
           service_id?: string
@@ -230,13 +207,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_professional_business_fkey"
-            columns: ["professional_id", "business_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["id", "business_id"]
-          },
-          {
             foreignKeyName: "bookings_service_business_fkey"
             columns: ["service_id", "business_id"]
             isOneToOne: false
@@ -256,7 +226,6 @@ export type Database = {
           name: string
           owner_id: string
           phone: string
-          plan: Database["public"]["Enums"]["business_plan"]
           slot_interval_minutes: number
           slug: string
           timezone: string
@@ -272,7 +241,6 @@ export type Database = {
           name: string
           owner_id: string
           phone: string
-          plan?: Database["public"]["Enums"]["business_plan"]
           slot_interval_minutes?: number
           slug: string
           timezone: string
@@ -288,7 +256,6 @@ export type Database = {
           name?: string
           owner_id?: string
           phone?: string
-          plan?: Database["public"]["Enums"]["business_plan"]
           slot_interval_minutes?: number
           slug?: string
           timezone?: string
@@ -335,41 +302,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customers_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      professionals: {
-        Row: {
-          business_id: string
-          created_at: string
-          id: string
-          is_active: boolean
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          business_id: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          business_id?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "professionals_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
@@ -450,7 +382,6 @@ export type Database = {
           customer_name: string
           customer_phone: string
           id: string
-          professional_id: string
           service_id: string
           start_at: string
           status: string
@@ -462,7 +393,6 @@ export type Database = {
           customer_name: string
           customer_phone: string
           id?: string
-          professional_id: string
           service_id: string
           start_at: string
           status?: string
@@ -474,7 +404,6 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           id?: string
-          professional_id?: string
           service_id?: string
           start_at?: string
           status?: string
@@ -485,13 +414,6 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "waitlist_entries_professional_id_fkey"
-            columns: ["professional_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
           {
@@ -509,7 +431,7 @@ export type Database = {
     }
     Functions: {
       cancel_booking_by_public_code: {
-        Args: { p_code: string; p_cancel_reason?: string }
+        Args: { p_cancel_reason?: string; p_code: string }
         Returns: {
           business_id: string
           cancel_reason: string | null
@@ -523,7 +445,6 @@ export type Database = {
           end_at: string
           id: string
           price_cents_snapshot: number
-          professional_id: string | null
           public_code: string
           reminder_sent_at: string | null
           service_id: string
@@ -531,6 +452,12 @@ export type Database = {
           start_at: string
           status: Database["public"]["Enums"]["booking_status"]
           updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bookings"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       check_booking_rate_limit: {
@@ -544,7 +471,6 @@ export type Database = {
           p_customer_name: string
           p_customer_note?: string
           p_customer_phone: string
-          p_professional_id?: string
           p_service_id: string
           p_start_at: string
         }
@@ -561,8 +487,8 @@ export type Database = {
           end_at: string
           id: string
           price_cents_snapshot: number
-          professional_id: string | null
           public_code: string
+          reminder_sent_at: string | null
           service_id: string
           service_name_snapshot: string
           start_at: string
@@ -595,7 +521,7 @@ export type Database = {
           business_name: string
           business_slug: string
           business_timezone: string
-          customer_email_snapshot: string | null
+          customer_email_snapshot: string
           customer_name_snapshot: string
           id: string
           public_code: string
@@ -604,15 +530,14 @@ export type Database = {
         }[]
       }
       get_waitlist_for_slot: {
-        Args: { p_professional_id: string; p_start_at: string }
+        Args: { p_business_id: string; p_start_at: string }
         Returns: {
           business_id: string
           created_at: string
-          customer_email: string | null
+          customer_email: string
           customer_name: string
           customer_phone: string
           id: string
-          professional_id: string
           service_id: string
           start_at: string
           status: string
@@ -624,7 +549,6 @@ export type Database = {
           p_customer_email?: string
           p_customer_name: string
           p_customer_phone: string
-          p_professional_id: string
           p_service_id: string
           p_start_at: string
         }
@@ -635,16 +559,18 @@ export type Database = {
           customer_name: string
           customer_phone: string
           id: string
-          professional_id: string
           service_id: string
           start_at: string
           status: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "waitlist_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      process_booking_reminders: {
-        Args: Record<string, never>
-        Returns: number
-      }
+      process_booking_reminders: { Args: never; Returns: number }
       set_booking_reminders_sent: {
         Args: { p_booking_ids: string[] }
         Returns: number
@@ -652,7 +578,6 @@ export type Database = {
     }
     Enums: {
       booking_status: "confirmed" | "completed" | "cancelled" | "no_show"
-      business_plan: "free" | "pro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -784,7 +709,6 @@ export const Constants = {
   public: {
     Enums: {
       booking_status: ["confirmed", "completed", "cancelled", "no_show"],
-      business_plan: ["free", "pro"],
     },
   },
 } as const

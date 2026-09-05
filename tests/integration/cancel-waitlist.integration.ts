@@ -17,7 +17,6 @@ const PASSWORD = "senha12345";
 let admin: ReturnType<typeof adminClient>;
 let ownerId = "";
 let businessId = "";
-let professionalId = "";
 let serviceId = "";
 
 const SLOT = "2099-01-06T14:00:00.000Z";
@@ -30,7 +29,6 @@ async function createBookingAt(startAt: string, phone: string) {
   const { data, error } = await admin.rpc("create_booking", {
     p_business_id: businessId,
     p_service_id: serviceId,
-    p_professional_id: professionalId,
     p_start_at: startAt,
     p_customer_name: "Cliente",
     p_customer_phone: phone,
@@ -69,9 +67,6 @@ beforeAll(async () => {
     if (bizErr) throw new Error(`business insert: ${bizErr.message}`);
     return biz!.id;
   });
-
-  const { data: pros } = await admin.from("professionals").select("id").eq("business_id", businessId);
-  professionalId = pros![0].id;
 
   const { data: svc } = await admin
     .from("services")
@@ -134,7 +129,6 @@ describe("join_waitlist (INC-3)", () => {
   it("creates a waitlist entry on an occupied slot and de-duplicates by slot + phone", async () => {
     const args = {
       p_business_id: businessId,
-      p_professional_id: professionalId,
       p_service_id: serviceId,
       p_start_at: SLOT_WAIT,
       p_customer_name: "Maria",
@@ -159,7 +153,6 @@ describe("join_waitlist (INC-3)", () => {
   it("rejects a free (not occupied) slot", async () => {
     const { error } = await admin.rpc("join_waitlist", {
       p_business_id: businessId,
-      p_professional_id: professionalId,
       p_service_id: serviceId,
       p_start_at: SLOT_2,
       p_customer_name: "Maria",
@@ -172,7 +165,6 @@ describe("join_waitlist (INC-3)", () => {
   it("rejects a past slot", async () => {
     const { error } = await admin.rpc("join_waitlist", {
       p_business_id: businessId,
-      p_professional_id: professionalId,
       p_service_id: serviceId,
       p_start_at: "2020-01-01T00:00:00.000Z",
       p_customer_name: "Maria",
@@ -186,7 +178,6 @@ describe("join_waitlist (INC-3)", () => {
     const anon = anonClient();
     const { error } = await anon.rpc("join_waitlist", {
       p_business_id: businessId,
-      p_professional_id: professionalId,
       p_service_id: serviceId,
       p_start_at: SLOT_WAIT,
       p_customer_name: "Maria",
@@ -199,7 +190,7 @@ describe("join_waitlist (INC-3)", () => {
 describe("get_waitlist_for_slot (INC-3 seam)", () => {
   it("returns pending entries for the slot ordered oldest-first", async () => {
     const { data } = await admin.rpc("get_waitlist_for_slot", {
-      p_professional_id: professionalId,
+      p_business_id: businessId,
       p_start_at: SLOT_WAIT,
     });
     const entries = (data ?? []).filter((e) => e.customer_phone === "+5511980000010");

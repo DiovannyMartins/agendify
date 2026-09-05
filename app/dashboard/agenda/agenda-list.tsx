@@ -22,11 +22,9 @@ function formatBookingTime(iso: string, tz: string): string {
 export function AgendaList({
   bookings,
   timezone,
-  professionalNames,
 }: {
   bookings: BookingRow[];
   timezone: string;
-  professionalNames?: (id: string | null) => string;
 }) {
   const [query, setQuery] = useState("");
 
@@ -96,11 +94,6 @@ export function AgendaList({
                   <p className="mt-1 text-sm">
                     {booking.customer_name_snapshot} · {booking.customer_phone_snapshot}
                   </p>
-                  {professionalNames?.(booking.professional_id) && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Profissional: {professionalNames(booking.professional_id)}
-                    </p>
-                  )}
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
                     Código: {booking.public_code}
                   </p>

@@ -1,19 +1,17 @@
 import { waitlistSchema, type WaitlistInput } from "@/lib/validation/schemas";
 
 // Waitlist seam (INC-3). A customer who found their preferred slot occupied
-// leaves contact details + the desired slot (`professional_id`/`service_id`/
-// `start_at`, a UTC instant per ADR 0003) so a later opening can be offered.
-// The validation and eligibility rules live here as pure functions so they are
-// unit-testable without a database; the RPC `join_waitlist` enforces integrity
-// atomically inside PostgreSQL (business/service/professional ownership + the
-// dedup unique constraint).
+// leaves contact details + the desired slot (`service_id`/`start_at`, a UTC
+// instant per ADR 0003) so a later opening can be offered. The validation and
+// eligibility rules live here as pure functions so they are unit-testable
+// without a database; the RPC `join_waitlist` enforces integrity atomically
+// inside PostgreSQL (business/service ownership + the dedup unique constraint).
 
 export type WaitlistStatus = "pending" | "notified" | "converted" | "cancelled";
 
 export type WaitlistRow = {
   id: string;
   business_id: string;
-  professional_id: string;
   service_id: string;
   start_at: string;
   customer_name: string;
@@ -33,7 +31,6 @@ export function isWaitlistEligible(startAt: string, now: Date): boolean {
 // booking server-action posture: reject invalid input server-side even if the
 // browser validation was bypassed.
 export function parseWaitlistInput(raw: {
-  professionalId: string;
   serviceId: string;
   startAt: string;
   customerName: string;
@@ -43,7 +40,6 @@ export function parseWaitlistInput(raw: {
   | { ok: true; data: WaitlistInput }
   | { ok: false; message: string } {
   const parsed = waitlistSchema.safeParse({
-    professionalId: raw.professionalId,
     serviceId: raw.serviceId,
     startAt: raw.startAt,
     customerName: raw.customerName,

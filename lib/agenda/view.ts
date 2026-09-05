@@ -13,7 +13,6 @@ export interface AgendaBooking {
   duration_minutes_snapshot: number;
   customer_name_snapshot: string;
   customer_phone_snapshot: string;
-  professional_id: string | null;
   // Present on the full DB rows the agenda list renders; absent on filtered views.
   public_code?: string;
   cancel_reason?: string | null;
@@ -22,16 +21,13 @@ export interface AgendaBooking {
 export interface AgendaFilters {
   dateKey?: string | null; // "YYYY-MM-DD" in the business tz; null filters all dates
   status?: BookingStatus | null;
-  professionalId?: string | null;
 }
 
 // Minimal dashboard-facing shapes shared by the agenda's list and grid views.
-export type Professional = { id: string; name: string; is_active: boolean };
 export type AvailabilityRow = {
   weekday: number;
   start_time: string;
   end_time: string;
-  professional_id: string | null;
 };
 
 // Time rows (HH:MM) for a working range, one per `slotIntervalMinutes` starting
@@ -124,12 +120,6 @@ export function filterAgenda(
       return false;
     }
     if (filters.status && booking.status !== filters.status) {
-      return false;
-    }
-    if (
-      filters.professionalId &&
-      booking.professional_id !== filters.professionalId
-    ) {
       return false;
     }
     return true;
