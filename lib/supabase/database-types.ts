@@ -226,6 +226,7 @@ export type Database = {
           name: string
           owner_id: string
           phone: string
+          plan: Database["public"]["Enums"]["business_plan"]
           slot_interval_minutes: number
           slug: string
           timezone: string
@@ -241,6 +242,7 @@ export type Database = {
           name: string
           owner_id: string
           phone: string
+          plan?: Database["public"]["Enums"]["business_plan"]
           slot_interval_minutes?: number
           slug: string
           timezone: string
@@ -256,6 +258,7 @@ export type Database = {
           name?: string
           owner_id?: string
           phone?: string
+          plan?: Database["public"]["Enums"]["business_plan"]
           slot_interval_minutes?: number
           slug?: string
           timezone?: string
@@ -367,6 +370,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "services_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          business_id: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          mp_preapproval_id: string
+          plan: Database["public"]["Enums"]["business_plan"]
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          mp_preapproval_id: string
+          plan?: Database["public"]["Enums"]["business_plan"]
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          mp_preapproval_id?: string
+          plan?: Database["public"]["Enums"]["business_plan"]
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
@@ -578,6 +625,8 @@ export type Database = {
     }
     Enums: {
       booking_status: "confirmed" | "completed" | "cancelled" | "no_show"
+      business_plan: "free" | "pro"
+      subscription_status: "pending" | "authorized" | "paused" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -709,6 +758,8 @@ export const Constants = {
   public: {
     Enums: {
       booking_status: ["confirmed", "completed", "cancelled", "no_show"],
+      business_plan: ["free", "pro"],
+      subscription_status: ["pending", "authorized", "paused", "cancelled"],
     },
   },
 } as const

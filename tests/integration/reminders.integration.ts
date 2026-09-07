@@ -8,12 +8,16 @@ import { adminClient, retryOnFk } from "./index";
 // `set_booking_reminders_sent` then dedups the tick. RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
 const EMAIL = `lembrete.${stamp}@agendify.dev`;
+const FREE_EMAIL = `lembrete-free.${stamp}@agendify.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;
 let ownerId = "";
+let freeOwnerId = "";
 let businessId = "";
 let serviceId = "";
+let freeBusinessId = "";
+let freeServiceId = "";
 
 const now = Date.now();
 function iso(offsetMinutes: number): string {
@@ -22,6 +26,8 @@ function iso(offsetMinutes: number): string {
 
 // The one booking that SHOULD be due: confirmed, future, within lead, has e-mail.
 let dueBookingId = "";
+// A due booking on a FREE business that must be excluded by the plan gate.
+let freeDueBookingId = "";
 
 async function insertBooking(opts: {
   businessId: string;
@@ -83,6 +89,7 @@ beforeAll(async () => {
         slot_interval_minutes: 30,
         min_notice_minutes: 0,
         booking_window_days: 60,
+        plan: "pro",
       })
       .select("*")
       .single();
@@ -95,6 +102,42 @@ beforeAll(async () => {
     .select("id")
     .single();
   serviceId = svc!.id;
+
+  // A second owner for the FREE business (a business is owned by exactly one
+  // profile, so the free business needs its own owner).
+  const { data: fp } = await admin.auth.admin.createUser({
+    email: FREE_EMAIL,
+    password: PASSWORD,
+    email_confirm: true,
+  });
+  freeOwnerId = fp?.user?.id ?? "";
+  await admin.from("profiles").upsert({ id: freeOwnerId, display_name: "Dona Grátis" }, { onConflict: "id" });
+
+  // A FREE business (default plan) whose due booking must be excluded by the gate.
+  freeBusinessId = await retryOnFk(async () => {
+    const { data: biz, error: bizErr } = await admin
+      .from("businesses")
+      .insert({
+        owner_id: freeOwnerId,
+        name: "Agenda Grátis",
+        slug: `agenda-gratis-${stamp}`,
+        phone: "+5511987654322",
+        timezone: "America/Sao_Paulo",
+        slot_interval_minutes: 30,
+        min_notice_minutes: 0,
+        booking_window_days: 60,
+      })
+      .select("*")
+      .single();
+    if (bizErr) throw new Error(`free business insert: ${bizErr.message}`);
+    return biz!.id;
+  });
+  const { data: freeSvc } = await admin
+    .from("services")
+    .insert({ business_id: freeBusinessId, name: "Corte", duration_minutes: 30, price_cents: 4000 })
+    .select("id")
+    .single();
+  freeServiceId = freeSvc!.id;
 
   // Bookings — one per scenario (times spaced >= 60min).
   dueBookingId = await insertBooking({
@@ -134,11 +177,22 @@ beforeAll(async () => {
     email: "cancel@example.com",
     status: "cancelled", // not confirmed
   });
+
+  // A due booking on the FREE business — must be filtered out by the plan gate.
+  freeDueBookingId = await insertBooking({
+    businessId: freeBusinessId,
+    serviceId: freeServiceId,
+    startAt: iso(150), // within lead
+    phone: "+5511980000099",
+    email: "free@example.com",
+  });
 });
 
 afterAll(async () => {
   await admin.from("businesses").delete().eq("owner_id", ownerId);
+  await admin.from("businesses").delete().eq("owner_id", freeOwnerId);
   await admin.auth.admin.deleteUser(ownerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(freeOwnerId).catch(() => undefined);
 });
 
 describe("INC-2 lembretes: get_due_booking_reminders", () => {
@@ -149,6 +203,12 @@ describe("INC-2 lembretes: get_due_booking_reminders", () => {
     expect(ids).toContain(dueBookingId);
     // None of the filtered out bookings are present.
     expect(ids).toHaveLength(1);
+  });
+
+  it("excludes candidates from non-Pro businesses (plan gate)", async () => {
+    const { data } = await admin.rpc("get_due_booking_reminders", { p_lead_minutes: 1440 });
+    const ids = (data ?? []).map((b) => b.id);
+    expect(ids).not.toContain(freeDueBookingId);
   });
 
   it("surfaces the fields the reminder e-mail needs", async () => {
