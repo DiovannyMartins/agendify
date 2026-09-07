@@ -7,7 +7,24 @@ test("landing page shows hero and CTAs", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Entrar" }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Como funciona", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Um único plano", exact: true })).toBeVisible();
+});
+
+test("landing shows the two plans with price and privileges", async ({ page }) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Dois planos para o seu negócio", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Grátis", { exact: true })).toBeVisible();
+  await expect(page.getByText("R$ 0", { exact: true })).toBeVisible();
+  await expect(page.getByText("PROFISSIONAL", { exact: true })).toBeVisible();
+  await expect(page.getByText("R$ 19", { exact: true })).toBeVisible();
+  await expect(page.getByText("Relatórios", { exact: true })).toBeVisible();
+  await expect(page.getByText("Lembretes automáticos", { exact: true })).toBeVisible();
+  await expect(page.getByText("Gestão da lista de espera", { exact: true })).toBeVisible();
+  await expect(page.getByText("Exportação Google Calendar/.ics", { exact: true })).toBeVisible();
+  const proCta = page.getByRole("link", { name: /Assinar PROFISSIONAL/i });
+  await expect(proCta).toBeVisible();
+  await expect(proCta).toHaveAttribute("href", "/cadastro");
 });
 
 test("auth and legal pages render", async ({ page }) => {
