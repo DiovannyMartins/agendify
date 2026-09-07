@@ -54,11 +54,18 @@ export function AgendaView({
   slotIntervalMinutes: number;
 }) {
   const [view, setView] = useState<ViewMode>("list");
-  const [dateKey, setDateKey] = useState(() => toLocalDate(new Date(), timezone));
+  // The date is an optional filter. `null` means "all dates", so the list
+  // ("Todas as reservas") shows every reservation until a date is picked.
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusFilter>("");
 
-  // Status and date filters apply in every view, so the list ("Todas as
-  // reservas") and the day/week grids all follow the selected date.
+  const todayKey = toLocalDate(new Date(), timezone);
+  // The day/week grids always need a concrete anchor; fall back to today when
+  // the date filter is off.
+  const anchorDate = dateFilter ?? todayKey;
+
+  // Status applies in every view; the date is an optional filter that narrows
+  // the list when set.
   const filtered = useMemo(
     () =>
       filterAgenda(bookings, {
@@ -71,8 +78,11 @@ export function AgendaView({
   );
 
   const listBookings = useMemo(
-    () => filterAgenda(filtered, { tz: timezone, filters: { dateKey } }),
-    [filtered, timezone, dateKey],
+    () =>
+      dateFilter
+        ? filterAgenda(filtered, { tz: timezone, filters: { dateKey: dateFilter } })
+        : filtered,
+    [filtered, timezone, dateFilter],
   );
 
   const dateStep = view === "week" ? 7 : 1;
@@ -104,14 +114,14 @@ export function AgendaView({
             size="sm"
             variant="outline"
             aria-label="Anterior"
-            onClick={() => setDateKey((d) => shiftDays(d, -dateStep))}
+            onClick={() => setDateFilter(shiftDays(anchorDate, -dateStep))}
           >
             <ChevronLeft className="size-4" />
           </Button>
           <Input
             type="date"
-            value={dateKey}
-            onChange={(e) => e.target.value && setDateKey(e.target.value)}
+            value={dateFilter ?? ""}
+            onChange={(e) => setDateFilter(e.target.value || null)}
             className="w-40"
             aria-label="Data"
           />
@@ -119,12 +129,19 @@ export function AgendaView({
             size="sm"
             variant="outline"
             aria-label="Próxima"
-            onClick={() => setDateKey((d) => shiftDays(d, dateStep))}
+            onClick={() => setDateFilter(shiftDays(anchorDate, dateStep))}
           >
             <ChevronRight className="size-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setDateKey(toLocalDate(new Date(), timezone))}>
+          <Button size="sm" variant="ghost" onClick={() => setDateFilter(todayKey)}>
             Hoje
+          </Button>
+          <Button
+            size="sm"
+            variant={dateFilter ? "outline" : "default"}
+            onClick={() => setDateFilter(null)}
+          >
+            Todas as datas
           </Button>
         </div>
 
@@ -151,7 +168,7 @@ export function AgendaView({
         ) : (
           <AgendaGrid
             view={view}
-            dateKey={dateKey}
+            dateKey={anchorDate}
             timezone={timezone}
             slotIntervalMinutes={slotIntervalMinutes}
             availability={availability}

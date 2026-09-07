@@ -26,7 +26,24 @@ function booking(over: Partial<AgendaBooking> & { id: string }): AgendaBooking {
 }
 
 describe("AgendaView list view", () => {
-  it("filters the list by the selected date, like the day/week grids", () => {
+  it("shows all reservations by default (the date is an optional filter)", () => {
+    const onDay = booking({ id: "a", start_at: "2026-09-20T11:00:00.000Z", customer_name_snapshot: "Joana" });
+    const offDay = booking({ id: "b", start_at: "2026-09-21T11:00:00.000Z", customer_name_snapshot: "Pedro" });
+
+    render(
+      <AgendaView
+        bookings={[onDay, offDay]}
+        availability={[]}
+        timezone={TZ}
+        slotIntervalMinutes={30}
+      />,
+    );
+
+    expect(screen.getByText(/Joana/)).toBeInTheDocument();
+    expect(screen.getByText(/Pedro/)).toBeInTheDocument();
+  });
+
+  it("filters the list by the selected date", () => {
     const onDay = booking({ id: "a", start_at: "2026-09-20T11:00:00.000Z", customer_name_snapshot: "Joana" });
     const offDay = booking({ id: "b", start_at: "2026-09-21T11:00:00.000Z", customer_name_snapshot: "Pedro" });
 
@@ -44,5 +61,27 @@ describe("AgendaView list view", () => {
 
     expect(screen.getByText(/Joana/)).toBeInTheDocument();
     expect(screen.queryByText(/Pedro/)).not.toBeInTheDocument();
+  });
+
+  it("clears the date filter back to all reservations", () => {
+    const onDay = booking({ id: "a", start_at: "2026-09-20T11:00:00.000Z", customer_name_snapshot: "Joana" });
+    const offDay = booking({ id: "b", start_at: "2026-09-21T11:00:00.000Z", customer_name_snapshot: "Pedro" });
+
+    render(
+      <AgendaView
+        bookings={[onDay, offDay]}
+        availability={[]}
+        timezone={TZ}
+        slotIntervalMinutes={30}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-09-20" } });
+    expect(screen.queryByText(/Pedro/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Todas as datas/ }));
+
+    expect(screen.getByText(/Joana/)).toBeInTheDocument();
+    expect(screen.getByText(/Pedro/)).toBeInTheDocument();
   });
 });
