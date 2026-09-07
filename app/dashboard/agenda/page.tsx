@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, CalendarClock, Download } from "lucide-react";
 import { toLocalDate } from "@/lib/booking/availability";
 import { filterAgenda } from "@/lib/agenda/view";
-import { buildIcsFeed, type GcalBooking } from "@/lib/gcal/gcal";
+import { getGcalExport } from "@/lib/gcal/get-export";
+import { isUpcomingConfirmed, type GcalExportBooking } from "@/lib/gcal/export";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { AgendaView } from "./agenda-view";
 
 export default async function AgendaPage() {
@@ -37,20 +39,16 @@ export default async function AgendaPage() {
     filters: { dateKey: todayKey },
   }).filter((b) => b.status !== "cancelled");
 
-  const upcoming = list.filter(
-    (b) => b.status === "confirmed" && new Date(b.start_at) >= now,
-  );
+  const upcoming = list.filter((b) => isUpcomingConfirmed(b, now));
 
-  // Owner calendar export (INC-3 / US25): the business's future active
-  // reservations as an importable .ics feed, matched to the owner's own calendar.
-  const feedBookings: GcalBooking[] = upcoming.map((b) => ({
-    summary: b.service_name_snapshot,
-    startAt: b.start_at,
-    endAt: b.end_at,
-    timezone: business.timezone,
-  }));
-  const icsFeed = buildIcsFeed(feedBookings);
-  const icsHref = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsFeed)}`;
+  // Owner calendar export (INC-3 / US25, Pro feature): the business's future
+  // active reservations as an importable .ics feed, gated behind the
+  // PROFISSIONAL plan. The page already loaded the owner's bookings, so we feed
+  // them to the gate boundary instead of re-fetching.
+  const exportResult = await getGcalExport({
+    getBusiness: async () => business,
+    fetchBookings: async () => list as unknown as GcalExportBooking[],
+  });
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -59,8 +57,11 @@ export default async function AgendaPage() {
           <h1 className="text-2xl font-semibold">Reservas</h1>
           <p className="mt-1 text-muted-foreground">Acompanhe e gerencie seus atendimentos.</p>
         </div>
-        {upcoming.length > 0 && (
-          <a href={icsHref} download="agendify-agenda.ics">
+        {exportResult.status === "ok" && exportResult.count > 0 && (
+          <a
+            href={`data:text/calendar;charset=utf-8,${encodeURIComponent(exportResult.icsFeed)}`}
+            download="agendify-agenda.ics"
+          >
             <Button size="sm" variant="outline">
               <Download className="size-4" />
               Exportar agenda (.ics)
@@ -68,6 +69,13 @@ export default async function AgendaPage() {
           </a>
         )}
       </div>
+
+      {exportResult.status === "upgrade_required" && (
+        <UpgradePrompt
+          title="Exportação de agenda é um recurso PROFISSIONAL"
+          description="Assine o PROFISSIONAL para exportar sua agenda em .ics, que você pode importar no Google Calendar."
+        />
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Card>
