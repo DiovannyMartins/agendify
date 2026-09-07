@@ -100,4 +100,45 @@ describe("createMercadoPagoProvider", () => {
       }),
     ).rejects.toThrow("missing id/init_point");
   });
+
+  it("fetches a preapproval and maps its status and external_reference", async () => {
+    const fetchMock = stubFetch(async () =>
+      jsonResponse({
+        id: "mp_1",
+        status: "authorized",
+        external_reference: "biz_1",
+        auto_recurring: { start_date: "2026-09-01T00:00:00.000Z", end_date: "2026-10-01T00:00:00.000Z" },
+      }),
+    );
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    const result = await provider.getPreapproval("mp_1");
+
+    expect(result).toEqual({
+      id: "mp_1",
+      status: "authorized",
+      externalReference: "biz_1",
+      currentPeriodStart: "2026-09-01T00:00:00.000Z",
+      currentPeriodEnd: "2026-10-01T00:00:00.000Z",
+    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.mercadopago.com/preapproval/mp_1");
+    expect(init.method).toBe("GET");
+  });
+
+  it("throws when fetching a preapproval returns a non-ok status", async () => {
+    stubFetch(async () => jsonResponse({ message: "not_found" }, 404));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(provider.getPreapproval("mp_1")).rejects.toThrow(
+      "Mercado Pago preapproval fetch failed (404): not_found",
+    );
+  });
+
+  it("throws when the preapproval status is missing or unknown", async () => {
+    stubFetch(async () => jsonResponse({ id: "mp_1", status: "weird" }));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(provider.getPreapproval("mp_1")).rejects.toThrow("missing a valid status");
+  });
 });

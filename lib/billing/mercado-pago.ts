@@ -5,7 +5,12 @@
 // stays the same. `apiBaseUrl` is injectable so the unit tests can point at a
 // stub server or stub `fetch` without a real network call.
 import type { BillingPlan } from "./types";
-import type { BillingProvider, CreatePreapprovalInput, CreatePreapprovalResult } from "./provider";
+import type {
+  BillingProvider,
+  CreatePreapprovalInput,
+  CreatePreapprovalResult,
+  Preapproval,
+} from "./provider";
 
 const DEFAULT_API_BASE_URL = "https://api.mercadopago.com";
 
@@ -19,6 +24,20 @@ const SUBSCRIPTION_TERMS: Record<BillingPlan, { amount: number; label: string } 
 export interface MercadoPagoConfig {
   accessToken: string;
   apiBaseUrl?: string;
+}
+
+// Shared error handling for a non-ok Mercado Pago response: read the optional
+// `message` from a JSON body and throw a single, consistent error shape.
+async function assertOk(res: Response, operation: string): Promise<void> {
+  if (res.ok) return;
+  let detail = "";
+  try {
+    const err = (await res.json()) as { message?: string };
+    detail = err?.message ?? "";
+  } catch {
+    // Non-JSON error body; the status is enough.
+  }
+  throw new Error(`Mercado Pago ${operation} failed (${res.status})${detail ? `: ${detail}` : ""}`);
 }
 
 export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingProvider {
@@ -51,18 +70,7 @@ export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingPro
         }),
       });
 
-      if (!res.ok) {
-        let detail = "";
-        try {
-          const err = (await res.json()) as { message?: string };
-          detail = err?.message ?? "";
-        } catch {
-          // Non-JSON error body; the status is enough.
-        }
-        throw new Error(
-          `Mercado Pago preapproval failed (${res.status})${detail ? `: ${detail}` : ""}`,
-        );
-      }
+      await assertOk(res, "preapproval");
 
       const body = (await res.json()) as { id?: string; init_point?: string };
       const preapprovalId = body.id ?? "";
@@ -71,6 +79,36 @@ export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingPro
         throw new Error("Mercado Pago preapproval response missing id/init_point");
       }
       return { preapprovalId, initPoint };
+    },
+
+    async getPreapproval(id: string): Promise<Preapproval> {
+      const res = await fetch(`${apiBaseUrl}/preapproval/${id}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${config.accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      await assertOk(res, "preapproval fetch");
+
+      const body = (await res.json()) as {
+        id?: string;
+        status?: string;
+        external_reference?: string | null;
+        auto_recurring?: { start_date?: string | null; end_date?: string | null };
+      };
+      const status = body.status;
+      if (status !== "pending" && status !== "authorized" && status !== "paused" && status !== "cancelled") {
+        throw new Error("Mercado Pago preapproval response missing a valid status");
+      }
+      return {
+        id: body.id ?? id,
+        status,
+        externalReference: body.external_reference ?? null,
+        currentPeriodStart: body.auto_recurring?.start_date ?? null,
+        currentPeriodEnd: body.auto_recurring?.end_date ?? null,
+      };
     },
   };
 }

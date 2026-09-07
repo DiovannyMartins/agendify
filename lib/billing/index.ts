@@ -11,6 +11,14 @@ export type {
   BillingProvider,
   CreatePreapprovalInput,
   CreatePreapprovalResult,
+  Preapproval,
 } from "./provider";
+export { handleWebhook } from "./handle-webhook";
+export type {
+  HandleWebhookDeps,
+  HandleWebhookResult,
+  PreapprovalResource,
+  WebhookEvent,
+} from "./handle-webhook";
 export { PLAN_INFO } from "./plans";
 export type { PlanInfo } from "./plans";

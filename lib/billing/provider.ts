@@ -21,8 +21,23 @@ export interface CreatePreapprovalResult {
   initPoint: string;
 }
 
+// The current state of a Mercado Pago preapproval (subscription), as returned by
+// `GET /preapproval/{id}`. The webhook lifecycle (issue #24) reads this to map
+// the provider's status onto the plan state. `externalReference` is the caller's
+// `external_reference`, i.e. the business id.
+export interface Preapproval {
+  id: string;
+  status: "pending" | "authorized" | "paused" | "cancelled";
+  externalReference: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+}
+
 export interface BillingProvider {
   // Creates a recurring preapproval (subscription) for the paid plan and returns
   // the checkout link (`init_point`) the user is redirected to.
   createPreapproval(input: CreatePreapprovalInput): Promise<CreatePreapprovalResult>;
+  // Fetches a preapproval by id so the webhook handler can read its current
+  // status and map it onto the plan lifecycle.
+  getPreapproval(id: string): Promise<Preapproval>;
 }

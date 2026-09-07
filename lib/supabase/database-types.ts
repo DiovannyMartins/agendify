@@ -358,6 +358,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
+          grace_period_end: string | null
           id: string
           mp_preapproval_id: string
           plan: Database["public"]["Enums"]["business_plan"]
@@ -369,6 +370,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          grace_period_end?: string | null
           id?: string
           mp_preapproval_id: string
           plan?: Database["public"]["Enums"]["business_plan"]
@@ -380,6 +382,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          grace_period_end?: string | null
           id?: string
           mp_preapproval_id?: string
           plan?: Database["public"]["Enums"]["business_plan"]
@@ -511,7 +514,7 @@ export type Database = {
         }
         SetofOptions: {
           from: "*"
-          to: "bookings"
+          to: "waitlist_entries"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -554,6 +557,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      downgrade_expired_subscriptions: { Args: never; Returns: number }
       generate_public_code: { Args: never; Returns: string }
       get_booking_by_public_code: {
         Args: { p_code: string }

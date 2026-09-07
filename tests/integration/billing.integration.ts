@@ -128,6 +128,7 @@ describe("issue #23 billing: assinatura + RLS", () => {
         preapprovalId: `mp-up-${stamp}`,
         initPoint: "https://sandbox.mercadopago.com/checkout",
       })),
+      getPreapproval: vi.fn(),
     };
     const saveSubscription: SaveSubscription = async (input) => {
       const { error } = await admin.from("subscriptions").insert({

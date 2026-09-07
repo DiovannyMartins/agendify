@@ -7,6 +7,7 @@ const BUSINESS = { id: "biz_1", plan: "free" as const };
 function makeProvider(result: CreatePreapprovalResult) {
   return {
     createPreapproval: vi.fn(async () => result),
+    getPreapproval: vi.fn(),
   } satisfies BillingProvider;
 }
 
@@ -111,6 +112,7 @@ describe("startUpgrade (ADR 0008)", () => {
       createPreapproval: vi.fn(async () => {
         throw new Error("Mercado Pago preapproval failed (401)");
       }),
+      getPreapproval: vi.fn(),
     } satisfies BillingProvider;
     const saveSubscription = vi.fn(async () => undefined);
 
