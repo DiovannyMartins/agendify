@@ -7,7 +7,7 @@
 // its waitlist. The entries fetch is injected so the gate is unit-testable
 // without a database, and the boundary can be exercised with a real
 // user-scoped client (RLS) in the integration tests. The public join stays free.
-import { assertProPlan, type Plan } from "@/lib/plan/plan";
+import { runProGated, type GatedBusiness } from "@/lib/plan/gate";
 import type { WaitlistStatus } from "@/lib/waitlist/waitlist";
 
 export type ManageWaitlistEntry = {
@@ -23,7 +23,7 @@ export type ManageWaitlistEntry = {
   created_at: string;
 };
 
-export type WaitlistManagementBusiness = { id: string; plan?: Plan | null };
+export type WaitlistManagementBusiness = GatedBusiness;
 
 export type FetchWaitlistEntries = (businessId: string) => Promise<ManageWaitlistEntry[]>;
 
@@ -37,15 +37,8 @@ export async function buildWaitlistManagementResult(
   business: WaitlistManagementBusiness | null,
   fetchEntries: FetchWaitlistEntries,
 ): Promise<WaitlistManagementResult> {
-  if (!business) return { status: "no_business" };
+  const gated = await runProGated(business, (businessId) => fetchEntries(businessId));
+  if (gated.status !== "ok") return gated;
 
-  const gate = assertProPlan(business);
-  if (!gate.ok) return { status: "upgrade_required" };
-
-  try {
-    const entries = await fetchEntries(business.id);
-    return { status: "ok", entries };
-  } catch {
-    return { status: "error" };
-  }
+  return { status: "ok", entries: gated.data };
 }

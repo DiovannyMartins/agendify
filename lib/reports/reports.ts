@@ -16,7 +16,7 @@
 //     over every booking in the period (confirmed + completed + cancelled +
 //     no_show).
 import type { BookingStatus } from "@/lib/bookings/transitions";
-import { assertProPlan, type Plan } from "@/lib/plan/plan";
+import { runProGated, type GatedBusiness } from "@/lib/plan/gate";
 
 export type ReportBooking = {
   id: string;
@@ -171,7 +171,7 @@ export type BillingReportResult =
   | { status: "upgrade_required" }
   | { status: "ok"; key: RangeKey; range: DateRange; report: BillingReport };
 
-export type ReportBusiness = { id: string; plan?: Plan | null };
+export type ReportBusiness = GatedBusiness;
 
 export type FetchReportBookings = (
   businessId: string,
@@ -183,18 +183,9 @@ export async function buildBillingReportResult(
   fetchBookings: FetchReportBookings,
   rangeKey?: string,
 ): Promise<BillingReportResult> {
-  if (!business) return { status: "no_business" };
-
-  const gate = assertProPlan(business);
-  if (!gate.ok) return { status: "upgrade_required" };
-
   const { key, range } = resolveRange(rangeKey);
-  let bookings: ReportBooking[];
-  try {
-    bookings = await fetchBookings(business.id, range);
-  } catch {
-    return { status: "error" };
-  }
+  const gated = await runProGated(business, (businessId) => fetchBookings(businessId, range));
+  if (gated.status !== "ok") return gated;
 
-  return { status: "ok", key, range, report: buildBillingReport(bookings, range) };
+  return { status: "ok", key, range, report: buildBillingReport(gated.data, range) };
 }

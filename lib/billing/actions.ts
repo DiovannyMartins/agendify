@@ -1,5 +1,6 @@
 "use server";
 
+import type { Database } from "@/lib/supabase/database-types";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentBusiness } from "@/lib/business/queries";
@@ -10,6 +11,10 @@ import {
   type SaveSubscription,
   type StartUpgradeResult,
 } from "./start-upgrade";
+import {
+  cancelSubscription as buildCancelSubscription,
+  type CancelSubscriptionResult,
+} from "./cancel-subscription";
 
 // Writes the new subscription row. The owner RLS policy only allows SELECT on
 // `subscriptions`, so the server action uses the service-role client (which
@@ -60,5 +65,45 @@ export async function startUpgrade(): Promise<StartUpgradeResult> {
     fetchSubscription: fetchCurrentSubscription,
     backUrl,
     payerEmail: user?.email,
+  });
+}
+
+// Server action called by the "Cancelar assinatura" button. Cancels the active
+// Mercado Pago preapproval (so the owner stops being charged) and records the
+// `cancelled` status with a grace period; the downgrade cron drops the business
+// to Free once the grace passes. Reads `MERCADO_PAGO_ACCESS_TOKEN`; when unset it
+// fails closed.
+export async function cancelSubscription(): Promise<CancelSubscriptionResult> {
+  const business = await getCurrentBusiness();
+  if (!business) {
+    return { ok: false, code: "NO_BUSINESS", message: "Configure seu negócio antes de gerenciar a assinatura." };
+  }
+
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  if (!accessToken) {
+    return {
+      ok: false,
+      code: "NOT_CONFIGURED",
+      message: "O pagamento ainda não está configurado neste ambiente.",
+    };
+  }
+
+  const provider = createMercadoPagoProvider({ accessToken });
+  const admin = createAdminClient();
+
+  return buildCancelSubscription({
+    business: { id: business.id, plan: business.plan },
+    provider,
+    fetchSubscription: fetchCurrentSubscription,
+    updateSubscription: async (mpPreapprovalId, update) => {
+      const payload: Database["public"]["Tables"]["subscriptions"]["Update"] = {};
+      if (update.status !== undefined) payload.status = update.status;
+      if (update.gracePeriodEnd !== undefined) payload.grace_period_end = update.gracePeriodEnd;
+      const { error } = await admin
+        .from("subscriptions")
+        .update(payload)
+        .eq("mp_preapproval_id", mpPreapprovalId);
+      if (error) throw new Error(error.message);
+    },
   });
 }

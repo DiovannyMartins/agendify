@@ -5,6 +5,7 @@ import { getSubscription } from "@/lib/billing/get-subscription";
 import { PLAN_INFO } from "@/lib/billing/plans";
 import type { BillingPlan, SubscriptionStatus } from "@/lib/billing/types";
 import { UpgradeButton } from "./upgrade-button";
+import { CancelSubscriptionButton } from "./cancel-subscription-button";
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   pending: "Pagamento pendente",
@@ -79,6 +80,15 @@ export async function PlanSection({ business }: { business: { id: string; plan: 
               Destrave relatórios, lembretes automáticos, gestão da lista de espera e exportação de agenda.
             </p>
             <UpgradeButton />
+          </div>
+        )}
+
+        {subscription?.status === "authorized" && (
+          <div className="border-t border-border pt-4">
+            <p className="text-sm text-muted-foreground">
+              Quer parar de ser cobrado? Cancelar encerra a assinatura e, após a carência, devolve o negócio ao plano Grátis.
+            </p>
+            <CancelSubscriptionButton />
           </div>
         )}
       </div>

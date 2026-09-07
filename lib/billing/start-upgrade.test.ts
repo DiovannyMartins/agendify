@@ -8,6 +8,7 @@ function makeProvider(result: CreatePreapprovalResult) {
   return {
     createPreapproval: vi.fn(async () => result),
     getPreapproval: vi.fn(),
+    cancelPreapproval: vi.fn(),
   } satisfies BillingProvider;
 }
 
@@ -113,6 +114,7 @@ describe("startUpgrade (ADR 0008)", () => {
         throw new Error("Mercado Pago preapproval failed (401)");
       }),
       getPreapproval: vi.fn(),
+      cancelPreapproval: vi.fn(),
     } satisfies BillingProvider;
     const saveSubscription = vi.fn(async () => undefined);
 

@@ -6,7 +6,7 @@
 // fetch is injected so the gate is unit-testable without a database. The actual
 // VCALENDAR serialisation lives in `lib/gcal/gcal`.
 import { buildIcsFeed, type GcalBooking } from "@/lib/gcal/gcal";
-import { assertProPlan, type Plan } from "@/lib/plan/plan";
+import { runProGated, type GatedBusiness } from "@/lib/plan/gate";
 import type { BookingStatus } from "@/lib/bookings/transitions";
 
 export type GcalExportBooking = {
@@ -17,7 +17,7 @@ export type GcalExportBooking = {
   service_name_snapshot: string;
 };
 
-export type GcalExportBusiness = { id: string; plan?: Plan | null; timezone: string };
+export type GcalExportBusiness = GatedBusiness & { timezone: string };
 
 export type FetchGcalBookings = (businessId: string) => Promise<GcalExportBooking[]>;
 
@@ -55,18 +55,10 @@ export async function buildGcalExportResult(
   fetchBookings: FetchGcalBookings,
   now: Date = new Date(),
 ): Promise<GcalExportResult> {
-  if (!business) return { status: "no_business" };
+  const gated = await runProGated(business, (businessId) => fetchBookings(businessId));
+  if (gated.status !== "ok") return gated;
 
-  const gate = assertProPlan(business);
-  if (!gate.ok) return { status: "upgrade_required" };
-
-  let rows: GcalExportBooking[];
-  try {
-    rows = await fetchBookings(business.id);
-  } catch {
-    return { status: "error" };
-  }
-
-  const events = toGcalBookings(rows, now, business.timezone);
+  // The gate only passes for a non-null Pro business, so the timezone is set.
+  const events = toGcalBookings(gated.data, now, business!.timezone);
   return { status: "ok", icsFeed: buildIcsFeed(events), count: events.length };
 }

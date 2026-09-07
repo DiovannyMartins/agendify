@@ -141,4 +141,25 @@ describe("createMercadoPagoProvider", () => {
     const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
     await expect(provider.getPreapproval("mp_1")).rejects.toThrow("missing a valid status");
   });
+
+  it("cancels a preapproval via PUT with status cancelled", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({}));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await provider.cancelPreapproval("mp_1");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.mercadopago.com/preapproval/mp_1");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toEqual({ status: "cancelled" });
+  });
+
+  it("throws when cancelling a preapproval returns a non-ok status", async () => {
+    stubFetch(async () => jsonResponse({ message: "not_found" }, 404));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(provider.cancelPreapproval("mp_1")).rejects.toThrow(
+      "Mercado Pago preapproval cancel failed (404): not_found",
+    );
+  });
 });

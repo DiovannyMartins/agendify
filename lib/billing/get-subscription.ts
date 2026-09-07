@@ -1,8 +1,12 @@
 // Server-side retrieval of the business's current subscription (ADR 0008). It
 // resolves the latest `subscriptions` row for a business (RLS scopes it to the
 // owner) and returns it alongside the plan that is the seat of the gate. The
-// fetch is injectable so the boundary can be exercised against a real
-// user-scoped client in the integration tests.
+// seat of the gate is `businesses.plan` (free | pro), which is what the
+// dashboard displays and what `assertProPlan` checks; the subscription row's own
+// `plan` column is always `pro` (a subscription represents the paid plan), so
+// the returned `plan` is the business's, not the row's. The fetch is injectable
+// so the boundary can be exercised against a real user-scoped client in the
+// integration tests.
 import { createClient } from "@/lib/supabase/server";
 import type { BillingPlan, BillingSubscription, SubscriptionStatus } from "./types";
 
@@ -14,8 +18,8 @@ export interface GetSubscriptionResult {
 }
 
 // Maps a `subscriptions` DB row to the provider-agnostic shape. A subscription
-// row always represents the paid (Pro) plan, so `plan` is taken from the row
-// rather than guessed.
+// row always represents the paid (Pro) plan, so the row's `plan` is carried
+// through as-is (it is `pro`).
 function mapRow(row: {
   mp_preapproval_id: string;
   status: SubscriptionStatus;

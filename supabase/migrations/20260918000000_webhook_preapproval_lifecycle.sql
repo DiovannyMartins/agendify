@@ -1,4 +1,4 @@
--- Migration 0036: ciclo de vida do preapproval + carência (issue #24).
+-- Migration 0038: ciclo de vida do preapproval + carência (issue #24).
 -- Follows ADR 0008. Completes the Mercado Pago subscription lifecycle that 0034
 -- (plan + subscriptions) and 0035 (hardening) began:
 --   * Adds `subscriptions.grace_period_end`: when a preapproval is `paused` or

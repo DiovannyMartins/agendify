@@ -92,7 +92,11 @@ export async function handleWebhook(deps: HandleWebhookDeps): Promise<HandleWebh
   if (!businessId) {
     return { ok: false, code: "NO_BUSINESS", message: "Não foi possível identificar o negócio da assinatura." };
   }
-  if (!sub) {
+  // Only mint a subscription row for a preapproval that represents an active or
+  // in-progress subscription. A `paused`/`cancelled` notification for an unknown
+  // preapproval has no subscription to track, and must not write a Pro row for a
+  // business that isn't Pro.
+  if (!sub && (preapproval.status === "authorized" || preapproval.status === "pending")) {
     await deps.createSubscription({
       businessId,
       mpPreapprovalId: event.dataId,
@@ -126,6 +130,10 @@ export async function handleWebhook(deps: HandleWebhookDeps): Promise<HandleWebh
       await deps.updateSubscription(event.dataId, { status: "pending" });
       return { ok: true, applied: "pending" };
     default:
-      return { ok: false, code: "UNKNOWN_STATUS", message: "Estado desconhecido da assinatura." };
+      // An unrecognised status is acknowledged (so Mercado Pago stops retrying)
+      // and logged for observability, instead of surfacing a 502 that the
+      // provider would retry indefinitely.
+      console.warn(`handleWebhook: unknown preapproval status "${preapproval.status}" (${event.dataId})`);
+      return { ok: true, applied: "ignored" };
   }
 }

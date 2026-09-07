@@ -12,6 +12,8 @@ import type {
   Preapproval,
 } from "./provider";
 
+const CANCELLED = "cancelled";
+
 const DEFAULT_API_BASE_URL = "https://api.mercadopago.com";
 
 // The recurring subscription terms per plan. Only the PROFISSIONAL plan (R$ 19)
@@ -109,6 +111,19 @@ export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingPro
         currentPeriodStart: body.auto_recurring?.start_date ?? null,
         currentPeriodEnd: body.auto_recurring?.end_date ?? null,
       };
+    },
+
+    async cancelPreapproval(id: string): Promise<void> {
+      const res = await fetch(`${apiBaseUrl}/preapproval/${id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${config.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: CANCELLED }),
+      });
+
+      await assertOk(res, "preapproval cancel");
     },
   };
 }

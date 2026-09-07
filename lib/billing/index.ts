@@ -22,3 +22,5 @@ export type {
 } from "./handle-webhook";
 export { PLAN_INFO } from "./plans";
 export type { PlanInfo } from "./plans";
+export { cancelSubscription } from "./cancel-subscription";
+export type { CancelSubscriptionDeps, CancelSubscriptionResult } from "./cancel-subscription";
