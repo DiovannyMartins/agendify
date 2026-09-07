@@ -1,15 +1,18 @@
-import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { adminClient, anonClientForUser, retryOnFk } from "./index";
-import { buildBillingReport, type ReportBooking } from "@/lib/reports/reports";
+import { buildBillingReport, type FetchReportBookings, type ReportBooking } from "@/lib/reports/reports";
+import { getBillingReport } from "@/lib/reports/get-report";
 
 // Integration tests against the real Supabase project. INC-2 (Pro reports): the
 // dashboard reads the owner's bookings via RLS and computes the report from the
 // snapshot columns. This block verifies (a) an owner can read their own bookings,
-// (b) the pure report math is correct on real rows, and (c) an outsider cannot
-// read them. RUN: npm run test:integration.
+// (b) the pure report math is correct on real rows, (c) an outsider cannot
+// read them, and (d) the plan gate (the read boundary) denies Free and lets Pro
+// through. RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
 const EMAIL = `relatorio.${stamp}@agendify.dev`;
 const OUTSIDER_EMAIL = `relatorio-out.${stamp}@agendify.dev`;
+const PRO_EMAIL = `relatorio-pro.${stamp}@agendify.dev`;
 const PASSWORD = "senha12345";
 
 // A fixed past window so the report math is independent of the run clock.
@@ -20,6 +23,8 @@ let admin: ReturnType<typeof adminClient>;
 let ownerId = "";
 let businessId = "";
 let otherOwnerId = "";
+let proOwnerId = "";
+let proBusinessId = "";
 let serviceCorte = "";
 let serviceBarba = "";
 let serviceSobrancelha = "";
@@ -140,13 +145,77 @@ beforeAll(async () => {
     if (bizErr) throw new Error(`other business insert: ${bizErr.message}`);
     return biz!.id;
   });
+
+  // A Pro business (own owner + own user, since a business has one owner) whose
+  // bookings the plan gate must let through.
+  const { data: pro } = await admin.auth.admin.createUser({
+    email: PRO_EMAIL,
+    password: PASSWORD,
+    email_confirm: true,
+  });
+  proOwnerId = pro?.user?.id ?? "";
+  await admin.from("profiles").upsert({ id: proOwnerId, display_name: "Dona Pro" }, { onConflict: "id" });
+  proBusinessId = await retryOnFk(async () => {
+    const { data: biz, error: bizErr } = await admin
+      .from("businesses")
+      .insert({
+        owner_id: proOwnerId,
+        name: "Agenda Pro",
+        slug: `agenda-pro-${stamp}`,
+        phone: "+5511987654323",
+        timezone: "America/Sao_Paulo",
+        slot_interval_minutes: 30,
+        min_notice_minutes: 0,
+        booking_window_days: 60,
+        plan: "pro",
+      })
+      .select("*")
+      .single();
+    if (bizErr) throw new Error(`pro business insert: ${bizErr.message}`);
+    return biz!.id;
+  });
+
+  const { data: proSvc } = await admin
+    .from("services")
+    .insert({ business_id: proBusinessId, name: "Corte Pro", duration_minutes: 30, price_cents: 5000 })
+    .select("id")
+    .single();
+  const { data: proCust } = await admin
+    .from("customers")
+    .insert({ business_id: proBusinessId, name: "Cliente", phone: "+5511990000099" })
+    .select("id")
+    .single();
+
+  for (const at of ["2099-05-10T10:00:00.000Z", "2099-05-11T10:00:00.000Z"]) {
+    const end = new Date(new Date(at).getTime() + 30 * 60_000).toISOString();
+    const { error } = await admin
+      .from("bookings")
+      .insert({
+        business_id: proBusinessId,
+        service_id: proSvc!.id,
+        customer_id: proCust!.id,
+        customer_name_snapshot: "Cliente",
+        customer_phone_snapshot: "+5511990000099",
+        service_name_snapshot: "Corte Pro",
+        duration_minutes_snapshot: 30,
+        price_cents_snapshot: 5000,
+        start_at: at,
+        end_at: end,
+        status: "completed",
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+  }
 });
 
 afterAll(async () => {
   await admin.from("businesses").delete().eq("owner_id", ownerId);
   await admin.from("businesses").delete().eq("owner_id", otherOwnerId);
+  await admin.from("businesses").delete().eq("owner_id", proOwnerId);
   await admin.auth.admin.deleteUser(ownerId).catch(() => undefined);
   await admin.auth.admin.deleteUser(otherOwnerId).catch(() => undefined);
+  await admin.auth.admin.deleteUser(proOwnerId).catch(() => undefined);
 });
 
 describe("INC-2 relatórios: dados + RLS", () => {
@@ -190,5 +259,54 @@ describe("INC-2 relatórios: dados + RLS", () => {
     expect(report.topService).toEqual({ name: "Corte", count: 2, revenueCents: 8000 });
     expect(report.cancellationRate).toBeCloseTo(1 / 6, 10);
     expect(report.noShowRate).toBeCloseTo(1 / 6, 10);
+  });
+});
+
+describe("INC-2 relatórios: gate de plano (free negado, pro liberado)", () => {
+  it("denies a Free business with upgrade_required before any fetch", async () => {
+    const { data: freeBiz } = await admin
+      .from("businesses")
+      .select("id, plan")
+      .eq("id", businessId)
+      .single();
+    expect(freeBiz?.plan).toBe("free");
+
+    const fetchSpy = vi.fn<FetchReportBookings>(async () => []);
+    const result = await getBillingReport("all", {
+      getBusiness: async () => ({ id: businessId, plan: "free" }),
+      fetchBookings: fetchSpy,
+    });
+    expect(result).toEqual({ status: "upgrade_required" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("lets a Pro business see the report through the user-scoped boundary", async () => {
+    const { data: proBiz } = await admin
+      .from("businesses")
+      .select("id, plan")
+      .eq("id", proBusinessId)
+      .single();
+    expect(proBiz?.plan).toBe("pro");
+
+    const proOwner = await anonClientForUser(PRO_EMAIL, PASSWORD);
+    const result = await getBillingReport("all", {
+      getBusiness: async () => ({ id: proBusinessId, plan: "pro" }),
+      fetchBookings: async (businessId, range) => {
+        const { data, error } = await proOwner
+          .from("bookings")
+          .select("id, status, start_at, price_cents_snapshot, service_name_snapshot")
+          .eq("business_id", businessId)
+          .gte("start_at", range.from)
+          .lt("start_at", range.to);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as unknown as ReportBooking[];
+      },
+    });
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.report.totalBookings).toBe(2);
+      expect(result.report.completed).toBe(2);
+      expect(result.report.revenueCents).toBe(10000);
+    }
   });
 });

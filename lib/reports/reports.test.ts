@@ -1,12 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_RANGE_KEY,
   buildBillingReport,
+  buildBillingReportResult,
   filterBookingsByRange,
   formatCurrencyBRL,
   formatRate,
   resolveRange,
+  type FetchReportBookings,
   type ReportBooking,
+  type ReportBusiness,
 } from "@/lib/reports/reports";
 
 // A worked example: the literals below are the independent source of truth. Any
@@ -119,5 +122,47 @@ describe("format helpers", () => {
     expect(formatRate(1 / 3)).toBe("33%");
     expect(formatRate(0)).toBe("0%");
     expect(formatRate(1)).toBe("100%");
+  });
+});
+
+describe("buildBillingReportResult (Pro gate, ADR 0008)", () => {
+  const proBusiness: ReportBusiness = { id: "biz-pro", plan: "pro" };
+  const freeBusiness: ReportBusiness = { id: "biz-free", plan: "free" };
+  const nullPlanBusiness: ReportBusiness = { id: "biz-null", plan: null };
+
+  const fetch: FetchReportBookings = async () => bookings;
+
+  it("returns no_business when there is no business", async () => {
+    expect(await buildBillingReportResult(null, fetch)).toEqual({ status: "no_business" });
+  });
+
+  it("returns upgrade_required for a free business without fetching bookings", async () => {
+    const spy = vi.fn(fetch);
+    const result = await buildBillingReportResult(freeBusiness, spy);
+    expect(result).toEqual({ status: "upgrade_required" });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for a business with a null plan", async () => {
+    expect(await buildBillingReportResult(nullPlanBusiness, fetch)).toEqual({
+      status: "upgrade_required",
+    });
+  });
+
+  it("returns ok with the computed report for a pro business", async () => {
+    const result = await buildBillingReportResult(proBusiness, fetch, "all");
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.key).toBe("all");
+      expect(result.report.totalBookings).toBe(6);
+      expect(result.report.revenueCents).toBe(10500);
+    }
+  });
+
+  it("returns error when the bookings fetch throws", async () => {
+    const failing: FetchReportBookings = async () => {
+      throw new Error("boom");
+    };
+    expect(await buildBillingReportResult(proBusiness, failing)).toEqual({ status: "error" });
   });
 });

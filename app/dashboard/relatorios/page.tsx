@@ -4,6 +4,7 @@ import { ArrowUpRight, Banknote, CalendarX2, Crown, MailCheck, Percent, UserX } 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getBillingReport } from "@/lib/reports/get-report";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 import {
   DEFAULT_RANGE_KEY,
   RANGE_KEYS,
@@ -33,28 +34,36 @@ export default async function RelatoriosPage({
             Faturamento, serviços mais vendidos e taxas de cancelamento e no-show.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border p-1">
-          {RANGE_KEYS.map((key) => {
-            const active = range ? key === range : key === DEFAULT_RANGE_KEY;
-            return (
-              <Link
-                key={key}
-                href={`/dashboard/relatorios?range=${key}`}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {RANGE_LABELS[key]}
-              </Link>
-            );
-          })}
-        </div>
+        {result.status !== "upgrade_required" && (
+          <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border p-1">
+            {RANGE_KEYS.map((key) => {
+              const active = range ? key === range : key === DEFAULT_RANGE_KEY;
+              return (
+                <Link
+                  key={key}
+                  href={`/dashboard/relatorios?range=${key}`}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {RANGE_LABELS[key]}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
+      {result.status === "upgrade_required" && (
+        <UpgradePrompt
+          title="Relatórios é um recurso PROFISSIONAL"
+          description="Assine o PROFISSIONAL para ver faturamento, serviços mais vendidos e taxas de cancelamento e no-show."
+        />
+      )}
       {result.status === "error" && <ErrorState />}
       {result.status === "ok" && <ReportBody key={result.key} report={result.report} />}
     </div>

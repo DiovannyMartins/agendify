@@ -1,9 +1,11 @@
-// Billing-reports seam (INC-2, Pro feature). The math lives here as a pure,
-// injected-fetch-free module so it is unit-testable without a database. The DB
-// only supplies bookings already scoped to the owner's business (RLS); this
-// module turns those rows into the report the dashboard renders. Uses the
-// snapshot columns (service_name_snapshot, price_cents_snapshot) so the numbers
-// are stable even if the service catalog changes later (per CONTEXT.md).
+// Billing-reports seam (INC-2, Pro feature). The math lives here as a pure
+// module so it is unit-testable without a database: the report computations take
+// the owner's bookings (already scoped by RLS) and the Pro gate decision takes
+// an injected bookings fetch. The DB only supplies rows; this module turns them
+// into the report the dashboard renders and decides whether the gate lets the
+// business through. Uses the snapshot columns (service_name_snapshot,
+// price_cents_snapshot) so the numbers are stable even if the service catalog
+// changes later (per CONTEXT.md).
 //
 // Semantics (see SPEC §24):
 //   * "faturamento" (revenue) = price of bookings that ended completed (only
@@ -14,6 +16,7 @@
 //     over every booking in the period (confirmed + completed + cancelled +
 //     no_show).
 import type { BookingStatus } from "@/lib/bookings/transitions";
+import { assertProPlan, type Plan } from "@/lib/plan/plan";
 
 export type ReportBooking = {
   id: string;
@@ -152,4 +155,46 @@ export function formatCurrencyBRL(cents: number): string {
 // Raw rate (0..1) -> whole-percent string for the dashboard ("33%").
 export function formatRate(rate: number): string {
   return `${Math.round(rate * 100)}%`;
+}
+
+// ---------------------------------------------------------------------------
+// Server-side result (ADR 0008). Reports are a Pro feature: the gate is applied
+// at the read boundary. `buildBillingReportResult` is the pure decision core —
+// it checks the business plan first (fail-closed) and only fetches/computes the
+// report for Pro businesses, so a Free business can never see report data. The
+// bookings fetch is injected so the gate is unit-testable without a database.
+// ---------------------------------------------------------------------------
+
+export type BillingReportResult =
+  | { status: "no_business" }
+  | { status: "error" }
+  | { status: "upgrade_required" }
+  | { status: "ok"; key: RangeKey; range: DateRange; report: BillingReport };
+
+export type ReportBusiness = { id: string; plan?: Plan | null };
+
+export type FetchReportBookings = (
+  businessId: string,
+  range: DateRange,
+) => Promise<ReportBooking[]>;
+
+export async function buildBillingReportResult(
+  business: ReportBusiness | null,
+  fetchBookings: FetchReportBookings,
+  rangeKey?: string,
+): Promise<BillingReportResult> {
+  if (!business) return { status: "no_business" };
+
+  const gate = assertProPlan(business);
+  if (!gate.ok) return { status: "upgrade_required" };
+
+  const { key, range } = resolveRange(rangeKey);
+  let bookings: ReportBooking[];
+  try {
+    bookings = await fetchBookings(business.id, range);
+  } catch {
+    return { status: "error" };
+  }
+
+  return { status: "ok", key, range, report: buildBillingReport(bookings, range) };
 }
