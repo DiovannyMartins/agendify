@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BusinessForm } from "./business-form";
 import { AvailabilityForm, AvailabilityRow } from "./availability-form";
+import { PlanSection } from "./plan-section";
 import { getCurrentBusiness } from "@/lib/business/queries";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,6 +20,8 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <BusinessForm initial={business} />
+
+      <PlanSection business={{ id: business.id, plan: business.plan }} />
 
       <section>
         <h2 className="text-xl font-semibold">Disponibilidade recorrente</h2>

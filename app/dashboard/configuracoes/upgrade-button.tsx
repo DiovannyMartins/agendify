@@ -1,0 +1,35 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { startUpgrade } from "@/lib/billing/actions";
+
+// "Fazer upgrade" CTA for the "Plano" section (ADR 0008). Calls the `startUpgrade`
+// server action, which creates a Mercado Pago preapproval and returns its
+// `init_point`; the browser is redirected there (sandbox in dev). A failure
+// surfaces a message inline instead of navigating away.
+export function UpgradeButton() {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function onClick() {
+    setError(null);
+    startTransition(async () => {
+      const result = await startUpgrade();
+      if (result.ok) {
+        window.location.assign(result.initPoint);
+      } else {
+        setError(result.message);
+      }
+    });
+  }
+
+  return (
+    <div className="mt-4 space-y-2">
+      <Button type="button" onClick={onClick} disabled={pending}>
+        {pending ? "Redirecionando..." : "Fazer upgrade"}
+      </Button>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}

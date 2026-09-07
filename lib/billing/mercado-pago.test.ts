@@ -1,0 +1,103 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createMercadoPagoProvider } from "./mercado-pago";
+
+type FetchMock = (url: string, init: RequestInit) => Promise<Response>;
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function stubFetch(impl: FetchMock) {
+  const fetchMock = vi.fn(impl);
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("createMercadoPagoProvider", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("creates a preapproval for the R$19/mês plan and returns init_point", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({ id: "mp_123", init_point: "https://mp.example/checkout" }));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-123" });
+    const result = await provider.createPreapproval({
+      plan: "pro",
+      externalReference: "biz_1",
+      backUrl: "https://app.example/dashboard/configuracoes",
+      payerEmail: "owner@example.com",
+    });
+
+    expect(result).toEqual({ preapprovalId: "mp_123", initPoint: "https://mp.example/checkout" });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.mercadopago.com/preapproval");
+    expect(init.method).toBe("POST");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer TEST-123");
+    const body = JSON.parse(String(init.body));
+    expect(body.auto_recurring).toEqual({
+      frequency: 1,
+      frequency_type: "months",
+      transaction_amount: 19,
+      currency_id: "BRL",
+    });
+    expect(body.external_reference).toBe("biz_1");
+    expect(body.payer_email).toBe("owner@example.com");
+    expect(body.back_url).toBe("https://app.example/dashboard/configuracoes");
+  });
+
+  it("omits payer_email when not provided", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({ id: "mp_1", init_point: "https://mp.example/x" }));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await provider.createPreapproval({
+      plan: "pro",
+      externalReference: "biz_1",
+      backUrl: "https://app.example",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).not.toHaveProperty("payer_email");
+  });
+
+  it("rejects the free plan (no subscription is sold for it)", async () => {
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(
+      provider.createPreapproval({
+        plan: "free",
+        externalReference: "biz_1",
+        backUrl: "https://app.example",
+      }),
+    ).rejects.toThrow("does not sell a subscription for the free plan");
+  });
+
+  it("throws when Mercado Pago returns a non-ok status", async () => {
+    stubFetch(async () => jsonResponse({ message: "invalid_token" }, 401));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(
+      provider.createPreapproval({
+        plan: "pro",
+        externalReference: "biz_1",
+        backUrl: "https://app.example",
+      }),
+    ).rejects.toThrow("Mercado Pago preapproval failed (401): invalid_token");
+  });
+
+  it("throws when the response is missing id or init_point", async () => {
+    stubFetch(async () => jsonResponse({ id: "mp_1" }));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(
+      provider.createPreapproval({
+        plan: "pro",
+        externalReference: "biz_1",
+        backUrl: "https://app.example",
+      }),
+    ).rejects.toThrow("missing id/init_point");
+  });
+});
