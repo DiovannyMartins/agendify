@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       availability: {
@@ -511,6 +486,36 @@ export type Database = {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }
         Returns: boolean
       }
+      convert_waitlist_entry: {
+        Args: { p_entry_id: string }
+        Returns: {
+          business_id: string
+          cancel_reason: string | null
+          created_at: string
+          customer_email_snapshot: string | null
+          customer_id: string
+          customer_name_snapshot: string
+          customer_note: string | null
+          customer_phone_snapshot: string
+          duration_minutes_snapshot: number
+          end_at: string
+          id: string
+          price_cents_snapshot: number
+          public_code: string
+          reminder_sent_at: string | null
+          service_id: string
+          service_name_snapshot: string
+          start_at: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_booking: {
         Args: {
           p_business_id: string
@@ -549,6 +554,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      generate_public_code: { Args: never; Returns: string }
       get_booking_by_public_code: {
         Args: { p_code: string }
         Returns: {
@@ -599,6 +605,26 @@ export type Database = {
           p_service_id: string
           p_start_at: string
         }
+        Returns: {
+          business_id: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          id: string
+          service_id: string
+          start_at: string
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "waitlist_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      notify_waitlist_entry: {
+        Args: { p_entry_id: string }
         Returns: {
           business_id: string
           created_at: string
@@ -752,9 +778,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       booking_status: ["confirmed", "completed", "cancelled", "no_show"],

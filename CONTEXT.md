@@ -67,3 +67,25 @@ _Avoid_: Falta, ausência, não comparecimento
 **Timezone (do negócio)**:
 Identificador IANA do negócio (ex.: America/Sao_Paulo). Datas são armazenadas em UTC e exibidas nesse fuso.
 _Avoid_: Fuso, região, hora local
+
+## Planos
+
+**Plano**:
+A camada de produto que determina quais recursos um negócio pode usar. No Agendify, um negócio está sempre em um de dois planos: Grátis ou PROFISSIONAL.
+_Avoid_: Pacote, tier, versão, nível
+
+**Grátis**:
+O plano sem custo mensal. Contém o núcleo do agendamento: página pública, dashboard, serviços ilimitados, clientes e histórico, bloqueios, gestão de reservas e cancelamento self-service.
+_Avoid_: Free, gratuito, plano básico
+
+**PROFISSIONAL**:
+O plano pago (R$ 19/mês) que destrava os recursos profissionais: relatórios, lembretes automáticos, gestão da lista de espera e exportação para Google Calendar/.ics.
+_Avoid_: Pro, premium, avançado, plano pago
+
+**Assinatura**:
+O contrato recorrente mensal que mantém um negócio no plano PROFISSIONAL. Enquanto ativa, os recursos profissionais estão liberados; quando interrompida (após a carência), o negócio volta ao Grátis.
+_Avoid_: Billing, pagamento, cobrança, subscription
+
+**Recurso profissional**:
+Funcionalidade disponível apenas no plano PROFISSIONAL (relatórios, lembretes automáticos, gestão da lista de espera e exportação Google Calendar/.ics). Nos demais planos, o recurso fica inacessível.
+_Avoid_: Recurso pago, benefício, upgrade

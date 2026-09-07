@@ -1,0 +1,54 @@
+"use client";
+
+import { useActionState } from "react";
+import { Button } from "@/components/ui/button";
+import { Bell, CalendarPlus } from "lucide-react";
+import { convertWaitlistEntry, notifyWaitlistEntry, type WaitlistActionResult } from "@/lib/waitlist/actions";
+import type { ManageWaitlistEntry } from "@/lib/waitlist/manage";
+
+const INITIAL: WaitlistActionResult = { ok: true };
+
+export function WaitlistActions({ entry }: { entry: ManageWaitlistEntry }) {
+  const canAct = entry.status === "pending" || entry.status === "notified";
+  if (!canAct) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <NotifyForm id={entry.id} />
+      <ConvertForm id={entry.id} />
+    </div>
+  );
+}
+
+function NotifyForm({ id }: { id: string }) {
+  const [state, formAction, pending] = useActionState(notifyWaitlistEntry, INITIAL);
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="id" value={id} />
+      <Button type="submit" size="sm" variant="outline" disabled={pending}>
+        <Bell className="size-4" />
+        Notificar
+      </Button>
+      {state.ok === false && <p className="mt-1 text-xs text-destructive">{state.message}</p>}
+    </form>
+  );
+}
+
+function ConvertForm({ id }: { id: string }) {
+  const [state, formAction, pending] = useActionState(convertWaitlistEntry, INITIAL);
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="id" value={id} />
+      <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+        <CalendarPlus className="size-4" />
+        Converter em reserva
+      </Button>
+      {state.publicCode && (
+        <p className="mt-1 text-xs text-emerald-600">Reserva criada: {state.publicCode}</p>
+      )}
+      {state.ok === false && <p className="mt-1 text-xs text-destructive">{state.message}</p>}
+    </form>
+  );
+}
