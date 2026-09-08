@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { isProPlan } from "@/lib/plan/plan";
 import { getSubscription } from "@/lib/billing/get-subscription";
 import { PLAN_INFO } from "@/lib/billing/plans";
-import type { BillingPlan, SubscriptionStatus } from "@/lib/billing/types";
+import { isSubscriptionInGrace, type BillingPlan, type SubscriptionStatus } from "@/lib/billing/types";
 import { UpgradeButton } from "./upgrade-button";
 import { CancelSubscriptionButton } from "./cancel-subscription-button";
 
@@ -80,6 +80,15 @@ export async function PlanSection({ business }: { business: { id: string; plan: 
               Destrave relatórios, lembretes automáticos, gestão da lista de espera e exportação de agenda.
             </p>
             <UpgradeButton />
+          </div>
+        )}
+
+        {isPro && isSubscriptionInGrace(subscription?.status) && (
+          <div className="border-t border-border pt-4">
+            <p className="text-sm text-muted-foreground">
+              Mudou de ideia? Reative a assinatura para continuar no plano PROFISSIONAL.
+            </p>
+            <UpgradeButton label="Assinar novamente" />
           </div>
         )}
 

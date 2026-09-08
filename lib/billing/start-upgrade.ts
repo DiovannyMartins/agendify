@@ -7,7 +7,7 @@
 // `pro` once the preapproval is `authorized` (webhook lifecycle, issue #24) —
 // this function never touches `businesses.plan`.
 import { isProPlan } from "@/lib/plan/plan";
-import type { BillingPlan, SubscriptionStatus } from "./types";
+import { isSubscriptionInGrace, type BillingPlan, type BillingSubscription, type SubscriptionStatus } from "./types";
 import type { BillingProvider } from "./provider";
 import type { FetchSubscription } from "./get-subscription";
 
@@ -39,19 +39,25 @@ export interface StartUpgradeDeps {
 export async function startUpgrade(deps: StartUpgradeDeps): Promise<StartUpgradeResult> {
   const { business, provider, saveSubscription, backUrl, payerEmail, notificationUrl, fetchSubscription } = deps;
 
-  if (isProPlan(business.plan)) {
+  let existing: BillingSubscription | null = null;
+  if (fetchSubscription) {
+    existing = await fetchSubscription(business.id);
+  }
+
+  // Re-subscription during the grace window (US16): a business whose CURRENT
+  // subscription is `cancelled`/`paused` is no longer being charged, so it may
+  // start a fresh preapproval even while `businesses.plan` is still `pro`. Every
+  // other Pro state (authorized, pending, or no row) may not start another.
+  if (isProPlan(business.plan) && !isSubscriptionInGrace(existing?.status)) {
     return { ok: false, code: "ALREADY_PRO", message: "Sua conta já está no plano PROFISSIONAL." };
   }
 
-  if (fetchSubscription) {
-    const existing = await fetchSubscription(business.id);
-    if (existing?.status === "pending") {
-      return {
-        ok: false,
-        code: "UPGRADE_PENDING",
-        message: "Você já iniciou uma assinatura. Conclua o pagamento para ativá-la.",
-      };
-    }
+  if (existing?.status === "pending") {
+    return {
+      ok: false,
+      code: "UPGRADE_PENDING",
+      message: "Você já iniciou uma assinatura. Conclua o pagamento para ativá-la.",
+    };
   }
 
   let created;

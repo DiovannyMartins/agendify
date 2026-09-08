@@ -7,8 +7,10 @@ import { startUpgrade } from "@/lib/billing/actions";
 // "Fazer upgrade" CTA for the "Plano" section (ADR 0008). Calls the `startUpgrade`
 // server action, which creates a Mercado Pago preapproval and returns its
 // `init_point`; the browser is redirected there (sandbox in dev). A failure
-// surfaces a message inline instead of navigating away.
-export function UpgradeButton() {
+// surfaces a message inline instead of navigating away. Also reused as
+// "Assinar novamente" during the grace window (US16), since re-subscribing runs
+// the same `startUpgrade` action.
+export function UpgradeButton({ label = "Fazer upgrade" }: { label?: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +29,7 @@ export function UpgradeButton() {
   return (
     <div className="mt-4 space-y-2">
       <Button type="button" onClick={onClick} disabled={pending}>
-        {pending ? "Redirecionando..." : "Fazer upgrade"}
+        {pending ? "Redirecionando..." : label}
       </Button>
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>

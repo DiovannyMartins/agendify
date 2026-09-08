@@ -152,4 +152,26 @@ describe("issue #24 webhook lifecycle", () => {
     expect(sub!.status).toBe("cancelled");
     expect(new Date(sub!.grace_period_end!).toISOString()).toBe("2026-09-14T12:00:00.000Z");
   });
+
+  it("downgrades a pro business whose current row is pending and the grace has lapsed", async () => {
+    // After a cancelled grace the business is still pro. Insert a NEWER `pending`
+    // row (an abandoned re-subscribe) so it becomes the current row, then expire
+    // the old cancelled row's grace. The robust downgrade must still drop the
+    // business: the current row is not `authorized` and no grace is active.
+    await admin.from("subscriptions").insert({
+      business_id: businessId,
+      mp_preapproval_id: `mp-wh-pending-${stamp}`,
+      plan: "pro",
+      status: "pending",
+    });
+    await admin
+      .from("subscriptions")
+      .update({ grace_period_end: new Date("2000-01-01T00:00:00.000Z").toISOString() })
+      .eq("mp_preapproval_id", MP_ID);
+
+    const { data: count, error } = await admin.rpc("downgrade_expired_subscriptions");
+    expect(error).toBeNull();
+    expect(count).toBeGreaterThan(0);
+    expect(await readBusinessPlan()).toBe("free");
+  });
 });

@@ -67,6 +67,77 @@ describe("startUpgrade (ADR 0008)", () => {
     expect(saveSubscription).not.toHaveBeenCalled();
   });
 
+  it("allows re-subscribing a pro business whose subscription is cancelled (grace)", async () => {
+    const provider = makeProvider({ preapprovalId: "mp_re", initPoint: "https://mp.example/r" });
+    const saveSubscription = vi.fn(async () => undefined);
+    const fetchSubscription = vi.fn(async () => ({
+      mpPreapprovalId: "mp_cancelled",
+      status: "cancelled" as const,
+      plan: "pro" as const,
+      currentPeriodStart: null,
+      currentPeriodEnd: null,
+    }));
+
+    const result = await startUpgrade({
+      business: { id: "biz_1", plan: "pro" },
+      provider,
+      saveSubscription,
+      fetchSubscription,
+      backUrl: "https://app.example",
+    });
+
+    expect(result).toEqual({ ok: true, initPoint: "https://mp.example/r" });
+    expect(provider.createPreapproval).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: "pro", externalReference: "biz_1" }),
+    );
+  });
+
+  it("allows re-subscribing a pro business whose subscription is paused (grace)", async () => {
+    const provider = makeProvider({ preapprovalId: "mp_pause", initPoint: "https://mp.example/p" });
+    const saveSubscription = vi.fn(async () => undefined);
+    const fetchSubscription = vi.fn(async () => ({
+      mpPreapprovalId: "mp_paused",
+      status: "paused" as const,
+      plan: "pro" as const,
+      currentPeriodStart: null,
+      currentPeriodEnd: null,
+    }));
+
+    const result = await startUpgrade({
+      business: { id: "biz_1", plan: "pro" },
+      provider,
+      saveSubscription,
+      fetchSubscription,
+      backUrl: "https://app.example",
+    });
+
+    expect(result).toEqual({ ok: true, initPoint: "https://mp.example/p" });
+    expect(provider.createPreapproval).toHaveBeenCalled();
+  });
+
+  it("refuses to re-subscribe a pro business whose subscription is still authorized", async () => {
+    const provider = makeProvider({ preapprovalId: "mp_auth", initPoint: "https://mp.example/a" });
+    const saveSubscription = vi.fn(async () => undefined);
+    const fetchSubscription = vi.fn(async () => ({
+      mpPreapprovalId: "mp_authorized",
+      status: "authorized" as const,
+      plan: "pro" as const,
+      currentPeriodStart: null,
+      currentPeriodEnd: null,
+    }));
+
+    const result = await startUpgrade({
+      business: { id: "biz_1", plan: "pro" },
+      provider,
+      saveSubscription,
+      fetchSubscription,
+      backUrl: "https://app.example",
+    });
+
+    expect(result).toEqual({ ok: false, code: "ALREADY_PRO", message: expect.any(String) });
+    expect(provider.createPreapproval).not.toHaveBeenCalled();
+  });
+
   it("refuses to start a second preapproval while one is pending", async () => {
     const provider = makeProvider({ preapprovalId: "mp_999", initPoint: "https://mp.example/p" });
     const saveSubscription = vi.fn(async () => undefined);

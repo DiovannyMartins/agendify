@@ -20,3 +20,11 @@ export interface BillingSubscription {
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
 }
+
+// A `cancelled`/`paused` subscription is no longer being charged and sits in the
+// grace window (carência): the business keeps Pro features until the grace
+// expires. Used to decide whether a Pro business may start a fresh preapproval
+// (re-subscribe) and whether the re-subscribe CTA should show.
+export function isSubscriptionInGrace(status: SubscriptionStatus | null | undefined): boolean {
+  return status === "cancelled" || status === "paused";
+}
