@@ -69,6 +69,10 @@ export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingPro
           back_url: input.backUrl,
           external_reference: input.externalReference,
           ...(input.payerEmail ? { payer_email: input.payerEmail } : {}),
+          // A hint only — Mercado Pago does not persist `notification_url` on a
+          // preapproval; notifications are delivered to the URL configured in
+          // "Your integrations" (topic `subscription_preapproval`).
+          ...(input.notificationUrl ? { notification_url: input.notificationUrl } : {}),
         }),
       });
 
@@ -122,6 +126,22 @@ export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingPro
         },
         body: JSON.stringify({ status: CANCELLED }),
       });
+
+      if (res.ok) return;
+
+      // The PUT can fail with 400 "You can not modify a cancelled preapproval"
+      // when the provider already has the preapproval cancelled but our local
+      // subscription row still says `authorized` (e.g. a cancel webhook that was
+      // never applied). Cancelling is idempotent: reconcile with the provider's
+      // ground truth and treat an already-cancelled preapproval as a successful
+      // cancel, otherwise surface the original error.
+      try {
+        const current = await this.getPreapproval(id);
+        if (current.status === "cancelled") return;
+      } catch {
+        // A failed reconciliation is not a success; fall through and surface the
+        // original PUT error.
+      }
 
       await assertOk(res, "preapproval cancel");
     },

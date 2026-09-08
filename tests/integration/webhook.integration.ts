@@ -97,7 +97,7 @@ afterAll(async () => {
 
 describe("issue #24 webhook lifecycle", () => {
   it("authorized marks the business pro and authorizes the subscription", async () => {
-    const result = await run({ type: "preapproval", dataId: MP_ID }, "authorized");
+    const result = await run({ type: "subscription_preapproval", dataId: MP_ID }, "authorized");
 
     expect(result).toEqual({ ok: true, applied: "authorized" });
     expect(await readBusinessPlan()).toBe("pro");

@@ -30,6 +30,7 @@ describe("createMercadoPagoProvider", () => {
       externalReference: "biz_1",
       backUrl: "https://app.example/dashboard/configuracoes",
       payerEmail: "owner@example.com",
+      notificationUrl: "https://tunnel.example/api/webhooks/mercadopago",
     });
 
     expect(result).toEqual({ preapprovalId: "mp_123", initPoint: "https://mp.example/checkout" });
@@ -48,6 +49,21 @@ describe("createMercadoPagoProvider", () => {
     expect(body.external_reference).toBe("biz_1");
     expect(body.payer_email).toBe("owner@example.com");
     expect(body.back_url).toBe("https://app.example/dashboard/configuracoes");
+    expect(body.notification_url).toBe("https://tunnel.example/api/webhooks/mercadopago");
+  });
+
+  it("omits notification_url when not provided", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({ id: "mp_1", init_point: "https://mp.example/x" }));
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await provider.createPreapproval({
+      plan: "pro",
+      externalReference: "biz_1",
+      backUrl: "https://app.example",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).not.toHaveProperty("notification_url");
   });
 
   it("omits payer_email when not provided", async () => {
@@ -160,6 +176,40 @@ describe("createMercadoPagoProvider", () => {
     const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
     await expect(provider.cancelPreapproval("mp_1")).rejects.toThrow(
       "Mercado Pago preapproval cancel failed (404): not_found",
+    );
+  });
+
+  it("treats an already-cancelled preapproval as a successful cancel", async () => {
+    const fetchMock = stubFetch(async (url, init) => {
+      if (init.method === "PUT") {
+        return jsonResponse({ message: "You can not modify a cancelled preapproval" }, 400);
+      }
+      return jsonResponse({ id: "mp_1", status: "cancelled", external_reference: null });
+    });
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(provider.cancelPreapproval("mp_1")).resolves.toBeUndefined();
+
+    const [firstUrl, firstInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(firstUrl).toBe("https://api.mercadopago.com/preapproval/mp_1");
+    expect(firstInit.method).toBe("PUT");
+
+    const [secondUrl, secondInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(secondUrl).toBe("https://api.mercadopago.com/preapproval/mp_1");
+    expect(secondInit.method).toBe("GET");
+  });
+
+  it("still throws when the PUT fails and the preapproval is not cancelled", async () => {
+    stubFetch(async (url, init) => {
+      if (init.method === "PUT") {
+        return jsonResponse({ message: "bad_request" }, 400);
+      }
+      return jsonResponse({ id: "mp_1", status: "authorized", external_reference: null });
+    });
+
+    const provider = createMercadoPagoProvider({ accessToken: "TEST-1" });
+    await expect(provider.cancelPreapproval("mp_1")).rejects.toThrow(
+      "Mercado Pago preapproval cancel failed (400): bad_request",
     );
   });
 });

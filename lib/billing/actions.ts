@@ -57,6 +57,7 @@ export async function startUpgrade(): Promise<StartUpgradeResult> {
 
   const provider = createMercadoPagoProvider({ accessToken });
   const backUrl = `${process.env.APP_URL ?? "http://localhost:3000"}/dashboard/configuracoes`;
+  const notificationUrl = process.env.MERCADO_PAGO_NOTIFICATION_URL;
 
   return buildStartUpgrade({
     business: { id: business.id, plan: business.plan },
@@ -65,6 +66,7 @@ export async function startUpgrade(): Promise<StartUpgradeResult> {
     fetchSubscription: fetchCurrentSubscription,
     backUrl,
     payerEmail: user?.email,
+    notificationUrl,
   });
 }
 

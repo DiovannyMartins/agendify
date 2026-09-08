@@ -28,13 +28,16 @@ export interface StartUpgradeDeps {
   saveSubscription: SaveSubscription;
   backUrl: string;
   payerEmail?: string;
+  // Where Mercado Pago POSTs subscription webhook notifications (the tunnel /
+  // deployed `/api/webhooks/mercadopago` URL). Required for subscriptions.
+  notificationUrl?: string;
   // When provided, guards against starting a second preapproval while one is
   // still pending (avoids orphaned preapprovals from double-clicking "upgrade").
   fetchSubscription?: FetchSubscription;
 }
 
 export async function startUpgrade(deps: StartUpgradeDeps): Promise<StartUpgradeResult> {
-  const { business, provider, saveSubscription, backUrl, payerEmail, fetchSubscription } = deps;
+  const { business, provider, saveSubscription, backUrl, payerEmail, notificationUrl, fetchSubscription } = deps;
 
   if (isProPlan(business.plan)) {
     return { ok: false, code: "ALREADY_PRO", message: "Sua conta já está no plano PROFISSIONAL." };
@@ -58,6 +61,7 @@ export async function startUpgrade(deps: StartUpgradeDeps): Promise<StartUpgrade
       externalReference: business.id,
       payerEmail,
       backUrl,
+      notificationUrl,
     });
   } catch (err) {
     return {

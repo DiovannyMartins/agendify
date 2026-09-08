@@ -14,6 +14,12 @@ export interface CreatePreapprovalInput {
   payerEmail?: string;
   // Where Mercado Pago sends the payer back after the flow (dashboard).
   backUrl: string;
+  // Where Mercado Pago should deliver subscription (preapproval) webhook
+  // notifications, ending in `/api/webhooks/mercadopago`. A hint only: Mercado
+  // Pago does NOT persist a per-preapproval `notification_url` for
+  // subscriptions, so the URL must ALSO be configured in "Your integrations"
+  // (topic `subscription_preapproval`). Keep this in sync with that panel URL.
+  notificationUrl?: string;
 }
 
 export interface CreatePreapprovalResult {
@@ -41,5 +47,6 @@ export interface BillingProvider {
   // status and map it onto the plan lifecycle.
   getPreapproval(id: string): Promise<Preapproval>;
   // Cancels a preapproval so the provider stops charging (user-initiated cancel).
+  // Idempotent: cancelling an already-cancelled preapproval succeeds.
   cancelPreapproval(id: string): Promise<void>;
 }

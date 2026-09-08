@@ -164,4 +164,34 @@ describe("handleWebhook (issue #24) lifecycle", () => {
       gracePeriodEnd: "2026-09-10T12:00:00.000Z",
     });
   });
+
+  it("accepts the subscription_preapproval type Mercado Pago sends", async () => {
+    const deps = makeDeps({ event: { type: "subscription_preapproval", dataId: "mp_1" } });
+    const result = await handleWebhook(deps);
+
+    expect(result).toEqual({ ok: true, applied: "authorized" });
+    expect(deps.setPlan).toHaveBeenCalledWith("biz_1", "pro");
+  });
+
+  it("preserves an existing future grace period on a paused retry", async () => {
+    const futureGrace = "2026-09-20T12:00:00.000Z";
+    const deps = makeDeps({
+      getPreapproval: vi.fn(async () => makePreapproval("paused")),
+      findSubscription: vi.fn(async () => ({
+        id: "sub_1",
+        businessId: "biz_1",
+        mpPreapprovalId: "mp_1",
+        status: "paused" as const,
+        plan: "free" as const,
+        gracePeriodEnd: futureGrace,
+      })),
+    });
+    const result = await handleWebhook(deps);
+
+    expect(result).toEqual({ ok: true, applied: "grace" });
+    expect(deps.updateSubscription).toHaveBeenCalledWith("mp_1", {
+      status: "paused",
+      gracePeriodEnd: futureGrace,
+    });
+  });
 });

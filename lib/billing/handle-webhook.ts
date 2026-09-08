@@ -1,5 +1,7 @@
 // Mercado Pago webhook lifecycle seam (issue #24). Maps a `preapproval`
-// notification onto the plan state, following ADR 0008:
+// notification (delivered with `type: "subscription_preapproval"`, and accepted
+// here as `preapproval` for older/legacy accounts) onto the plan state,
+// following ADR 0008:
 //   * `authorized`  -> the business becomes Pro; the subscription is authorized.
 //   * `paused`/`cancelled` (incl. a failed recurring payment, which Mercado Pago
 //     surfaces as `paused`) -> start a 7-day grace period. The business stays
@@ -68,11 +70,17 @@ export type HandleWebhookResult =
 const DEFAULT_GRACE_DAYS = 7;
 const MS_PER_DAY = 86_400_000;
 
+// The `type` values Mercado Pago sends for a preapproval (subscription)
+// lifecycle notification. Current accounts use `subscription_preapproval`; the
+// legacy value `preapproval` is kept for older integrations.
+const PREAPPROVAL_EVENT_TYPES = new Set(["preapproval", "subscription_preapproval"]);
+
 export async function handleWebhook(deps: HandleWebhookDeps): Promise<HandleWebhookResult> {
   const { event } = deps;
-  if (event.type !== "preapproval") {
-    // Non-subscription topics (e.g. `payment`) are acknowledged and ignored; a
-    // failed recurring payment surfaces as the preapproval becoming `paused`.
+  if (!PREAPPROVAL_EVENT_TYPES.has(event.type)) {
+    // Non-subscription topics (e.g. `payment`, `subscription_authorized_payment`)
+    // are acknowledged and ignored; a failed recurring payment surfaces as the
+    // preapproval becoming `paused`, which arrives on the preapproval topic.
     return { ok: true, applied: "ignored" };
   }
 
@@ -118,14 +126,21 @@ export async function handleWebhook(deps: HandleWebhookDeps): Promise<HandleWebh
       });
       return { ok: true, applied: "authorized" };
     case "paused":
-    case "cancelled":
+    case "cancelled": {
+      // Idempotent grace: preserve an already-set future grace (so a provider
+      // retry of the same `paused`/`cancelled` event does not keep pushing the
+      // downgrade further out), otherwise start a fresh grace window.
+      const existingGrace = sub?.gracePeriodEnd ? new Date(sub.gracePeriodEnd) : null;
+      const graceEnd =
+        existingGrace && existingGrace.getTime() > now.getTime()
+          ? existingGrace
+          : new Date(now.getTime() + (deps.graceDays ?? DEFAULT_GRACE_DAYS) * MS_PER_DAY);
       await deps.updateSubscription(event.dataId, {
         status: preapproval.status,
-        gracePeriodEnd: new Date(
-          now.getTime() + (deps.graceDays ?? DEFAULT_GRACE_DAYS) * MS_PER_DAY,
-        ).toISOString(),
+        gracePeriodEnd: graceEnd.toISOString(),
       });
       return { ok: true, applied: "grace" };
+    }
     case "pending":
       await deps.updateSubscription(event.dataId, { status: "pending" });
       return { ok: true, applied: "pending" };
