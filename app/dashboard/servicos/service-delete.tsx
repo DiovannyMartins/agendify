@@ -1,0 +1,66 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { deleteService, type ActionResult } from "@/lib/services/actions";
+
+const INITIAL: ActionResult = { ok: true, data: undefined };
+
+export function ServiceDelete({ id, name }: { id: string; name: string }) {
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState<ActionResult>(INITIAL);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setState(INITIAL);
+      }}
+    >
+      <DialogTrigger
+        render={<Button variant="ghost" size="icon-sm" aria-label="Excluir serviço" />}
+      >
+        <Trash2 />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Excluir serviço</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja excluir &quot;{name}&quot;? Esta ação não pode ser desfeita.
+          </DialogDescription>
+        </DialogHeader>
+        {!state.ok && <p className="text-sm text-destructive">{state.message}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const result = await deleteService(id);
+                setState(result);
+                if (result.ok) setOpen(false);
+              })
+            }
+          >
+            {pending ? "Excluindo..." : "Excluir"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
 import { ServiceForm } from "./service-form";
 import { ServiceToggle } from "./service-toggle";
+import { ServiceDelete } from "./service-delete";
 
 export default async function ServicosPage() {
   const business = await getCurrentBusiness();
@@ -65,6 +66,7 @@ export default async function ServicosPage() {
                     priceCents: service.price_cents,
                   }}
                 />
+                <ServiceDelete id={service.id} name={service.name} />
               </div>
             </div>
           ))}

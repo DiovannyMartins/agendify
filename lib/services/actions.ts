@@ -115,3 +115,32 @@ export async function toggleService(id: string, isActive: boolean): Promise<void
 
   revalidatePath("/dashboard/servicos");
 }
+
+export async function deleteService(id: string): Promise<ActionResult> {
+  const business = await getCurrentBusiness();
+  if (!business) return { ok: false, code: "NO_BUSINESS", message: "Configure seu negócio primeiro." };
+
+  const supabase = await createClient();
+  const { error, data: deleted } = await supabase
+    .from("services")
+    .delete()
+    .eq("id", id)
+    .eq("business_id", business.id)
+    .select();
+
+  if (error) {
+    if (error.code === "23503") {
+      return {
+        ok: false,
+        code: "HAS_BOOKINGS",
+        message: "Este serviço possui reservas e não pode ser excluído. Desative-o para não receber novas reservas.",
+      };
+    }
+    return { ok: false, code: "DB_ERROR", message: "Não foi possível excluir o serviço." };
+  }
+  if (!deleted || deleted.length === 0) {
+    return { ok: false, code: "NOT_FOUND", message: "Serviço não encontrado." };
+  }
+  revalidatePath("/dashboard/servicos");
+  return { ok: true, data: undefined };
+}
