@@ -199,7 +199,12 @@ describe("INC-2 lembretes: get_due_booking_reminders", () => {
   it("returns exactly the confirmed, due, has-e-mail, not-yet-reminded booking", async () => {
     const { data, error } = await admin.rpc("get_due_booking_reminders", { p_lead_minutes: 1440 });
     expect(error).toBeNull();
-    const ids = (data ?? []).map((b) => b.id);
+    // The RPC scans ALL businesses (global cron tick), so scope the assertion to
+    // this test's business. Without this filter the test would fail in a shared
+    // project that holds real data eligible for a reminder (a live reservation).
+    const ids = (data ?? [])
+      .filter((b) => b.business_id === businessId)
+      .map((b) => b.id);
     expect(ids).toContain(dueBookingId);
     // None of the filtered out bookings are present.
     expect(ids).toHaveLength(1);

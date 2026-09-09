@@ -111,6 +111,19 @@ describe("createBooking RPC (§11.4)", () => {
     expect(String(error?.message).toLowerCase()).toMatch(/overlap|already|reserved|slash/i);
   });
 
+  it("rejects a booking that starts before min_notice (defense-in-depth, migration 0040)", async () => {
+    // A start in the far past must be rejected by the RPC even with min_notice=0.
+    const { error } = await admin.rpc("create_booking", {
+      p_business_id: businessId,
+      p_service_id: serviceId,
+      p_start_at: "2020-01-01T00:00:00.000Z",
+      p_customer_name: "João",
+      p_customer_phone: "+5511966666666",
+    });
+    expect(error).not.toBeNull();
+    expect(String(error?.message).toLowerCase()).toMatch(/min_notice|before|past/i);
+  });
+
   it("public lookup exposes only non-personal data and no status (§16)", async () => {
     const { data: booking } = await admin.rpc("create_booking", {
       p_business_id: businessId,

@@ -121,10 +121,12 @@ export async function createBooking(input: {
   return { ok: true, publicCode: data?.public_code };
 }
 
-// Public consultation of a reservation by its public code. Uses the cookie-based
-// server client (anon role) — the lookup RPC is granted to anon. The result
-// carries only non-personal data (service, date/time, business contact). Gated by
-// a per-IP rate limit and the optional Turnstile anti-bot check (fail-open).
+// Public consultation of a reservation by its public code. Uses the server-only
+// admin client (service role) — the lookup RPC is revoked from anon and granted
+// only to service_role (migration 0016), so public access must flow through the
+// server. The result carries only non-personal data (service, date/time, business
+// contact). Gated by a per-IP rate limit and the optional Turnstile anti-bot
+// check (fail-open).
 export async function consultBooking(
   _prev: ConsultState,
   formData: FormData,

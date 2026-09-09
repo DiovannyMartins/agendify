@@ -155,6 +155,7 @@ export async function getSlotsForDate(
     .from("services")
     .select("duration_minutes")
     .eq("id", serviceId)
+    .eq("business_id", businessId)
     .eq("is_active", true)
     .single();
 
