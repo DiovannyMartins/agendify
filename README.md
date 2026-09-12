@@ -33,6 +33,7 @@ Plataforma SaaS de agendamento online para profissionais e pequenos negócios. O
 - **Timezone IANA por negócio**: datas armazenadas em UTC e exibidas no fuso local do estabelecimento.
 - **Anti-bot**: gate de Cloudflare Turnstile no fluxo público de reserva.
 - **Histórico estável**: snapshots de serviço (nome, preço, duração) preservam o histórico da reserva.
+- **Plano PROFISSIONAL (R$ 19/mês, Mercado Pago)**: relatórios, lembretes automáticos, gestão da lista de espera e exportação da agenda (Google Calendar/.ics). O plano Grátis contém o núcleo completo de agendamento.
 
 > Especificação de produto e implementação: `documento-projeto.md` (fonte de verdade do MVP).
 
@@ -103,7 +104,7 @@ As migrations vivem em `supabase/migrations/` e são aplicadas em ordem, seguind
 Aplicar no Supabase:
 
 ```bash
-supabase db push --db-url "postgresql://postgres.<ref>:<senha>@<host>.pooler.supabase.com:6543/postgres"
+npx supabase db push --linked
 ```
 
 Gerar os tipos tipados:
