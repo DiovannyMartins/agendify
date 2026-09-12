@@ -11,7 +11,7 @@ export default function CadastroPage() {
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <CalendarClock className="size-5" />
           </span>
-          <span className="text-lg">Agendify</span>
+          <span className="text-lg">AgendFined</span>
         </Link>
       </Reveal>
       <Reveal delay={80} className="w-full max-w-md">

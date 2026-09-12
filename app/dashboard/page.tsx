@@ -22,7 +22,7 @@ export default async function DashboardHome() {
             <p className="mt-1 text-muted-foreground">
               Seu link público:{" "}
               <Link href={publicUrl} className="font-medium text-foreground hover:underline">
-                agendify.app/{business.slug}
+                agendfined.app/{business.slug}
               </Link>
             </p>
           </div>

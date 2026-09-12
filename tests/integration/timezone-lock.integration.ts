@@ -11,7 +11,7 @@ import { describeTimezoneImpact } from "@/lib/business/timezone-lock";
 // flow into describeTimezoneImpact as the dashboard renders them.
 // RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `tzlock.${stamp}@agendify.dev`;
+const EMAIL = `tzlock.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 const FUTURE_A = "2099-03-10T15:00:00.000Z"; // future, stays confirmed
 const FUTURE_B = "2099-03-10T16:00:00.000Z"; // future, then cancelled

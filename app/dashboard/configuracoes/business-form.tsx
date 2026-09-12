@@ -112,7 +112,7 @@ export function BusinessForm({
               <Label htmlFor="slug">Endereço público (slug)</Label>
               <Input id="slug" placeholder="minha-barbearia" autoComplete="off" {...register("slug")} />
               <p className="text-xs text-muted-foreground">
-                Apenas minúsculas, números e hífen. Seu link: agendify.app/{slug || "seu-slug"}
+                Apenas minúsculas, números e hífen. Seu link: agendfined.app/{slug || "seu-slug"}
               </p>
               {(errors.slug || fieldErrors.slug) && (
                 <p className="text-sm text-destructive">

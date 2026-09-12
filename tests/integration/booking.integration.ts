@@ -4,8 +4,8 @@ import { adminClient, anonClientForUser, retryOnFk } from "./index";
 // These are integration tests against the real Supabase project (§19.2).
 // RUN: npm run test:integration. Requires .env.local with valid keys.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `teste.${stamp}@agendify.dev`;
-const OTHER_EMAIL = `outro.${stamp}@agendify.dev`;
+const EMAIL = `teste.${stamp}@agendfined.dev`;
+const OTHER_EMAIL = `outro.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;

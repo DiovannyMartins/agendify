@@ -10,8 +10,8 @@ import type { FetchGcalBookings, GcalExportBooking } from "@/lib/gcal/export";
 // fetch and (b) a Pro business gets the feed through the user-scoped boundary.
 // RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
-const FREE_EMAIL = `gcal-free.${stamp}@agendify.dev`;
-const PRO_EMAIL = `gcal-pro.${stamp}@agendify.dev`;
+const FREE_EMAIL = `gcal-free.${stamp}@agendfined.dev`;
+const PRO_EMAIL = `gcal-pro.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;

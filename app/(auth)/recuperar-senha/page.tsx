@@ -7,7 +7,7 @@ export default function RecuperarSenhaPage() {
     <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-12">
       <Link href="/" className="mb-8 flex items-center gap-2 font-semibold">
         <CalendarClock className="size-6" />
-        <span className="text-lg">Agendify</span>
+        <span className="text-lg">AgendFined</span>
       </Link>
       <ForgotPasswordForm />
       <p className="mt-6 text-sm text-muted-foreground">

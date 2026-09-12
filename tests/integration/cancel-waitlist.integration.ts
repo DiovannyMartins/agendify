@@ -11,7 +11,7 @@ import { adminClient, anonClient, anonClientForUser, retryOnFk } from "./index";
 // and the RLS/privilege posture of both.
 // RUN: npm run test:integration (requires the 0030 migration pushed).
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `cancel.${stamp}@agendify.dev`;
+const EMAIL = `cancel.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;
@@ -32,7 +32,7 @@ async function createBookingAt(startAt: string, phone: string) {
     p_start_at: startAt,
     p_customer_name: "Cliente",
     p_customer_phone: phone,
-    p_customer_email: `cli.${stamp}@agendify.dev`,
+    p_customer_email: `cli.${stamp}@agendfined.dev`,
   });
   expect(error).toBeNull();
   return data!;

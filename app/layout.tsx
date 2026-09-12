@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agendify — Agendamentos online para profissionais",
+  title: "AgendFined — Agendamentos online para profissionais",
   description:
     "Receba agendamentos online, organize seus horários e ofereça uma experiência mais profissional aos seus clientes.",
 };

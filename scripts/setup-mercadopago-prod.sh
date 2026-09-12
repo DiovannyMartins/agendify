@@ -191,13 +191,13 @@ banner "Mercado Pago — assinatura PROFISSIONAL (produção)"
 # Production values land in the working env file (reference) AND must be pasted
 # into the Vercel project environment variables (Stage 4).
 ENV_FILE="${ENV_FILE:-.env.local}"
-PROD_URL="https://agendify-liart.vercel.app"
+PROD_URL="https://agendfined-liart.vercel.app"
 
 # ── Stage 1: confirmar URL de produção + ligação do repo ───────────────────
 stage "Produção: URL e ligação do repo"
 say "Confirma a URL de produção e que o projeto Vercel está ligado ao repo."
 step "URL de produção esperada: $PROD_URL"
-step "Confirme no painel da Vercel que o projeto está ligado a https://github.com/DiovannyMartins/agendify"
+step "Confirme no painel da Vercel que o projeto está ligado a https://github.com/DiovannyMartins/agendfined"
 note "Deploy acontece ao fazer push na main (integração GitHub) ou via 'vercel deploy'."
 confirm "A URL de produção é $PROD_URL e o repo está ligado à Vercel?" || { warn "Ajuste PROD_URL no script ou corrija a ligação e rode de novo."; }
 write_env APP_URL "$PROD_URL"
@@ -232,7 +232,7 @@ note "Dica: use o botão 'Simular' para enviar um evento de teste à URL e confi
 stage "Vercel: variáveis de ambiente"
 say "Adiciona as 4 variáveis de produção no projeto da Vercel."
 open_url "https://vercel.com/dashboard"
-step "Abra o projeto (agendify) → Settings → Environment Variables."
+step "Abra o projeto (agendfined) → Settings → Environment Variables."
 note "Cada variável já foi gravada em $ENV_FILE. Cole os valores abaixo (server-side):"
 for k in MERCADO_PAGO_ACCESS_TOKEN MERCADO_PAGO_WEBHOOK_SECRET MERCADO_PAGO_NOTIFICATION_URL APP_URL; do
   v=$(_existing "$k" || true)
@@ -260,9 +260,9 @@ else
   note "Deploy manual. Após publicar, valide o endpoint:"
 fi
 note "Teste GET (esperado 405, rota só aceita POST):"
-note "  curl -i https://agendify-liart.vercel.app/api/webhooks/mercadopago"
+note "  curl -i https://agendfined-liart.vercel.app/api/webhooks/mercadopago"
 note "Teste POST sem assinatura (esperado 503/401, fail-closed):"
-note "  curl -i -X POST https://agendify-liart.vercel.app/api/webhooks/mercadopago?data.id=x -H 'Content-Type: application/json' -d '{\"type\":\"preapproval\",\"data\":{\"id\":\"x\"}}'"
+note "  curl -i -X POST https://agendfined-liart.vercel.app/api/webhooks/mercadopago?data.id=x -H 'Content-Type: application/json' -d '{\"type\":\"preapproval\",\"data\":{\"id\":\"x\"}}'"
 note "Depois, faça o upgrade real no dashboard (Plano → Fazer upgrade) para validar o ciclo completo."
 
 finish

@@ -14,8 +14,8 @@ import type { BillingSubscription } from "@/lib/billing/types";
 // subscription, and (d) `startUpgrade` persists a pending subscription and
 // returns the `init_point`. RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `billing.${stamp}@agendify.dev`;
-const OUTSIDER_EMAIL = `billing-out.${stamp}@agendify.dev`;
+const EMAIL = `billing.${stamp}@agendfined.dev`;
+const OUTSIDER_EMAIL = `billing-out.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;

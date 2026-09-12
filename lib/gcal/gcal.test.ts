@@ -74,6 +74,6 @@ describe("buildIcsFeed (export de várias reservas do dono)", () => {
 
   it("gives each event a deterministic UID based on start + summary", () => {
     const feed = buildIcsFeed([booking]);
-    expect(feed).toContain("UID:agendify-20260901T200000Z-Corte de cabelo");
+    expect(feed).toContain("UID:agendfined-20260901T200000Z-Corte de cabelo");
   });
 });

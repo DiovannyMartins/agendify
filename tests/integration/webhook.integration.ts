@@ -15,7 +15,7 @@ import type { PreapprovalResource } from "@/lib/billing/handle-webhook";
 //     business back to Free (data preserved).
 // RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `webhook.${stamp}@agendify.dev`;
+const EMAIL = `webhook.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 const MP_ID = `mp-wh-${stamp}`;
 const NOW = new Date("2026-09-07T12:00:00.000Z");

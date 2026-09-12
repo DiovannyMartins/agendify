@@ -10,9 +10,9 @@ import { getBillingReport } from "@/lib/reports/get-report";
 // read them, and (d) the plan gate (the read boundary) denies Free and lets Pro
 // through. RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `relatorio.${stamp}@agendify.dev`;
-const OUTSIDER_EMAIL = `relatorio-out.${stamp}@agendify.dev`;
-const PRO_EMAIL = `relatorio-pro.${stamp}@agendify.dev`;
+const EMAIL = `relatorio.${stamp}@agendfined.dev`;
+const OUTSIDER_EMAIL = `relatorio-out.${stamp}@agendfined.dev`;
+const PRO_EMAIL = `relatorio-pro.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 // A fixed past window so the report math is independent of the run clock.

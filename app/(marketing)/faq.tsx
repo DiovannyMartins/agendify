@@ -19,7 +19,7 @@ const faqs = [
   },
   {
     q: "Preciso instalar algo?",
-    a: "Não. O Agendify funciona direto no navegador, no celular ou no computador. Você só precisa de um link para compartilhar.",
+    a: "Não. O AgendFined funciona direto no navegador, no celular ou no computador. Você só precisa de um link para compartilhar.",
   },
 ];
 

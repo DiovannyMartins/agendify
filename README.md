@@ -1,4 +1,4 @@
-# Agendify
+# AgendFined
 
 Plataforma SaaS de agendamento online para profissionais e pequenos negócios. O profissional configura seu negócio, serviços e disponibilidade; clientes reservam serviços pela página pública, sem precisar de conta.
 
@@ -153,5 +153,5 @@ MVP completo (Fases 1–9 da spec).
 
 ## Produção
 
-- **URL**: `https://agendify-liart.vercel.app`
+- **URL**: `https://agendfined-liart.vercel.app`
 - **Supabase**: projeto `<project-ref>` (produção) — manter em config privada, não no repositório

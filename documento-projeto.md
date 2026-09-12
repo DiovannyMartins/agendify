@@ -1,8 +1,8 @@
-<!-- Cabeçalho repetido no DOCX: AGENDIFY  |  ESPECIFICAÇÃO V2.0 -->
+<!-- Cabeçalho repetido no DOCX: AGENDFINED  |  ESPECIFICAÇÃO V2.0 -->
 
 **PROJETO FULL STACK / SAAS**
 
-# AGENDIFY
+# AGENDFINED
 
 **Agendamentos online para profissionais e pequenos negócios**
 
@@ -14,7 +14,7 @@ Landing page + aplicação full stack + dashboard administrativo
 
 **Objetivo desta versão**
 
-Transformar o conceito original do Agendify em uma especificação suficientemente precisa para implementação, reduzindo decisões improvisadas durante banco de dados, autenticação, disponibilidade, reservas, segurança, testes e deploy.
+Transformar o conceito original do AgendFined em uma especificação suficientemente precisa para implementação, reduzindo decisões improvisadas durante banco de dados, autenticação, disponibilidade, reservas, segurança, testes e deploy.
 
 **Status:** As regras marcadas como “normativas” neste documento devem ser tratadas como a fonte de verdade do MVP. Mudanças posteriores devem ser registradas como alteração de escopo.
 
@@ -52,7 +52,7 @@ Esta versão preserva a proposta central do documento original e fecha as lacuna
 
 ## 1. Visão do produto
 
-O Agendify é uma plataforma SaaS de agendamento online criada para profissionais e pequenos negócios que precisam organizar horários e permitir que clientes reservem serviços sem depender de mensagens manuais no WhatsApp ou em redes sociais.
+O AgendFined é uma plataforma SaaS de agendamento online criada para profissionais e pequenos negócios que precisam organizar horários e permitir que clientes reservem serviços sem depender de mensagens manuais no WhatsApp ou em redes sociais.
 
 ### Elevator pitch
 
@@ -68,7 +68,7 @@ O Agendify é uma plataforma SaaS de agendamento online criada para profissionai
 
 ### 1.2 Solução
 
-O profissional configura o negócio, serviços, disponibilidade recorrente e bloqueios. O Agendify gera uma página pública por slug. O cliente seleciona serviço, data e horário; o servidor valida novamente a disponibilidade e cria a reserva de forma atômica. A reserva aparece imediatamente no dashboard do profissional.
+O profissional configura o negócio, serviços, disponibilidade recorrente e bloqueios. O AgendFined gera uma página pública por slug. O cliente seleciona serviço, data e horário; o servidor valida novamente a disponibilidade e cria a reserva de forma atômica. A reserva aparece imediatamente no dashboard do profissional.
 
 ## 2. Público-alvo
 
@@ -909,11 +909,11 @@ O MVP só pode ser marcado como concluído quando todos os itens abaixo forem ve
 
 ### 24.1 Agendamento por negócio (sem equipe)
 
-O Agendify usa um agendamento único em nível de negócio: disponibilidade, bloqueios e reservas são escopados por `business_id`. A direção de equipe multi-profissional e o gate de plano (ver ADRs 0006/0007) foram removidos; a separação entre profiles e businesses permanece, mantendo o negócio independente da autenticação.
+O AgendFined usa um agendamento único em nível de negócio: disponibilidade, bloqueios e reservas são escopados por `business_id`. A direção de equipe multi-profissional e o gate de plano (ver ADRs 0006/0007) foram removidos; a separação entre profiles e businesses permanece, mantendo o negócio independente da autenticação.
 
 ## 25. Por que o projeto é forte para portfólio
 
-| **Competência** | **Evidência no Agendify** |
+| **Competência** | **Evidência no AgendFined** |
 | --- | --- |
 | Frontend | React, componentes reutilizáveis, formulários, estados e responsividade. |
 | Backend | Server Actions/Route Handlers, regras de domínio e tratamento de erros. |
@@ -974,10 +974,10 @@ O Agendify usa um agendamento único em nível de negócio: disponibilidade, blo
 
 ## 29. Estado final da especificação
 
-Com as decisões e critérios desta versão, o Agendify possui definição suficiente para iniciar e concluir o MVP sem depender de decisões fundamentais improvisadas no meio do desenvolvimento. Banco, concorrência, timezone, lifecycle de reserva, autenticação, RLS, validações, UX mínima, testes e deploy possuem comportamento explicitamente definido.
+Com as decisões e critérios desta versão, o AgendFined possui definição suficiente para iniciar e concluir o MVP sem depender de decisões fundamentais improvisadas no meio do desenvolvimento. Banco, concorrência, timezone, lifecycle de reserva, autenticação, RLS, validações, UX mínima, testes e deploy possuem comportamento explicitamente definido.
 
 **Fonte de verdade:** Em caso de conflito entre um mockup futuro e as regras deste documento, prevalece esta especificação até que uma decisão seja registrada e a versão do documento seja atualizada.
 
-Agendify - conceito de produto para estudo, portfólio e evolução responsável para um SaaS real.
+AgendFined - conceito de produto para estudo, portfólio e evolução responsável para um SaaS real.
 
-<!-- Rodapé repetido no DOCX: Agendify  •  Documento de produto e implementação  •  Página [PAGE] -->
+<!-- Rodapé repetido no DOCX: AgendFined  •  Documento de produto e implementação  •  Página [PAGE] -->

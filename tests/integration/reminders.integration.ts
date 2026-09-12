@@ -7,8 +7,8 @@ import { adminClient, retryOnFk } from "./index";
 // that have not yet been reminded, and exclude everything else.
 // `set_booking_reminders_sent` then dedups the tick. RUN: npm run test:integration.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `lembrete.${stamp}@agendify.dev`;
-const FREE_EMAIL = `lembrete-free.${stamp}@agendify.dev`;
+const EMAIL = `lembrete.${stamp}@agendfined.dev`;
+const FREE_EMAIL = `lembrete-free.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;

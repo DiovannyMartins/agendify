@@ -35,7 +35,7 @@ export function Footer() {
             <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <CalendarClock className="size-4" />
             </span>
-            <span>Agendify</span>
+            <span>AgendFined</span>
           </Link>
           <p className="max-w-xs text-sm text-muted-foreground">
             Sua agenda trabalhando por você, 24 horas por dia.
@@ -61,7 +61,7 @@ export function Footer() {
         ))}
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Agendify. Todos os direitos reservados.
+        © {new Date().getFullYear()} AgendFined. Todos os direitos reservados.
       </div>
     </footer>
   );

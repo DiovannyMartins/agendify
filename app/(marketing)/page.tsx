@@ -161,7 +161,7 @@ export default function MarketingHome() {
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
             <Badge variant="secondary" className="mb-4 rounded-full px-3.5 text-sm">
-              Por que usar o Agendify
+              Por que usar o AgendFined
             </Badge>
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Menos mensagens, mais clientes atendidos

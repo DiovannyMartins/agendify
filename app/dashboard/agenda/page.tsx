@@ -60,7 +60,7 @@ export default async function AgendaPage() {
         {exportResult.status === "ok" && exportResult.count > 0 && (
           <a
             href={`data:text/calendar;charset=utf-8,${encodeURIComponent(exportResult.icsFeed)}`}
-            download="agendify-agenda.ics"
+            download="agendfined-agenda.ics"
           >
             <Button size="sm" variant="outline">
               <Download className="size-4" />

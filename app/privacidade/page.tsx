@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Política de Privacidade — Agendify" };
+export const metadata: Metadata = { title: "Política de Privacidade — AgendFined" };
 
 export default function PrivacidadePage() {
   return (
@@ -46,7 +46,7 @@ export default function PrivacidadePage() {
         <h2 className="text-xl font-medium">5. Contato</h2>
         <p>
           Em caso de dúvidas sobre esta política, entre em contato pelo e-mail
-          suporte@agendify.app.
+          suporte@agendfined.app.
         </p>
       </section>
     </article>

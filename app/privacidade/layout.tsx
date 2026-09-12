@@ -8,7 +8,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
     <div className="mx-auto max-w-3xl px-4 py-12 lg:px-6">
       <Link href="/" className="mb-8 inline-flex items-center gap-2 font-semibold">
         <CalendarClock className="size-5" />
-        <span>Agendify</span>
+        <span>AgendFined</span>
       </Link>
       {children}
       <p className="mt-12 border-t border-border pt-6 text-sm">

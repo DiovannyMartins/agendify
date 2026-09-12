@@ -37,7 +37,7 @@ function bookingArgs(businessId: string, serviceId: string, startAt = SLOT_1, ph
     p_start_at: startAt,
     p_customer_name: "Cliente Teste",
     p_customer_phone: phone ?? `+55119${stamp}`,
-    p_customer_email: `cli.${stamp}@agendify.dev`,
+    p_customer_email: `cli.${stamp}@agendfined.dev`,
   };
 }
 
@@ -62,7 +62,7 @@ async function retryOnFk<T>(fn: () => Promise<T>, attempts = 6, delayMs = 250): 
 
 async function makeOwnerAdmin(prefix: string) {
   const { data, error } = await admin.auth.admin.createUser({
-    email: `${prefix}.${stamp}@agendify.dev`,
+    email: `${prefix}.${stamp}@agendfined.dev`,
     password: PASSWORD,
     email_confirm: true,
   });
@@ -156,7 +156,7 @@ describe("create_booking privileges (§29/§30/§31/§37)", () => {
   });
 
   it("authenticated user CANNOT execute create_booking directly", async () => {
-    const owner = await anonClientForUser(`ownera.${stamp}@agendify.dev`, PASSWORD);
+    const owner = await anonClientForUser(`ownera.${stamp}@agendfined.dev`, PASSWORD);
     const { data, error } = await owner.rpc("create_booking", bookingArgs(businessA, activeServiceA, SLOT_1, `+551197${stamp}`));
     expect(error).not.toBeNull();
     expect(data).toBeNull();
@@ -200,19 +200,19 @@ describe("create_booking integrity (§8/§9/§32/§33/§34)", () => {
 
 describe("RLS isolation User A vs User B (§35)", () => {
   it("outsider cannot read the owner's bookings", async () => {
-    const outsider = await anonClientForUser(`outsider.${stamp}@agendify.dev`, PASSWORD);
+    const outsider = await anonClientForUser(`outsider.${stamp}@agendfined.dev`, PASSWORD);
     const { data } = await outsider.from("bookings").select("*").eq("business_id", businessA);
     expect(data?.length ?? 0).toBe(0);
   });
 
   it("outsider cannot read the owner's customers", async () => {
-    const outsider = await anonClientForUser(`outsider.${stamp}@agendify.dev`, PASSWORD);
+    const outsider = await anonClientForUser(`outsider.${stamp}@agendfined.dev`, PASSWORD);
     const { data } = await outsider.from("customers").select("*").eq("business_id", businessA);
     expect(data?.length ?? 0).toBe(0);
   });
 
   it("outsider cannot update a booking it cannot see", async () => {
-    const outsider = await anonClientForUser(`outsider.${stamp}@agendify.dev`, PASSWORD);
+    const outsider = await anonClientForUser(`outsider.${stamp}@agendfined.dev`, PASSWORD);
     const { data, error } = await outsider
       .from("bookings")
       .update({ customer_name_snapshot: "hacked" })
@@ -223,7 +223,7 @@ describe("RLS isolation User A vs User B (§35)", () => {
   });
 
   it("outsider cannot insert a service into the owner's business", async () => {
-    const outsider = await anonClientForUser(`outsider.${stamp}@agendify.dev`, PASSWORD);
+    const outsider = await anonClientForUser(`outsider.${stamp}@agendfined.dev`, PASSWORD);
     const { error } = await outsider.from("services").insert({
       business_id: businessA,
       name: "Service Invasor",
@@ -234,7 +234,7 @@ describe("RLS isolation User A vs User B (§35)", () => {
   });
 
   it("outsider cannot change the owner of business A", async () => {
-    const outsider = await anonClientForUser(`outsider.${stamp}@agendify.dev`, PASSWORD);
+    const outsider = await anonClientForUser(`outsider.${stamp}@agendfined.dev`, PASSWORD);
     const { data, error } = await outsider
       .from("businesses")
       .update({ owner_id: outsiderId })

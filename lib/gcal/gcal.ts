@@ -26,7 +26,7 @@ export function buildIcsFeed(bookings: GcalBooking[]): string {
 function buildSingleEvent(b: GcalBooking): string[] {
   return [
     "BEGIN:VEVENT",
-    `UID:agendify-${toGcalUtc(b.startAt)}-${escapeText(b.summary)}`,
+    `UID:agendfined-${toGcalUtc(b.startAt)}-${escapeText(b.summary)}`,
     `DTSTAMP:${toGcalUtc(new Date().toISOString())}`,
     `DTSTART:${toGcalUtc(b.startAt)}`,
     `DTEND:${toGcalUtc(b.endAt)}`,
@@ -38,7 +38,7 @@ function buildSingleEvent(b: GcalBooking): string[] {
 }
 
 function calendarHeader(): string[] {
-  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Agendify//Agendamento//PT-BR"];
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//AgendFined//Agendamento//PT-BR"];
 }
 
 // Google Calendar "add to calendar" template URL (action=TEMPLATE). Public and

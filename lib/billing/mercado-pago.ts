@@ -59,7 +59,7 @@ export function createMercadoPagoProvider(config: MercadoPagoConfig): BillingPro
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          reason: `Assinatura ${terms.label} - Agendify (R$ ${terms.amount}/mês)`,
+          reason: `Assinatura ${terms.label} - AgendFined (R$ ${terms.amount}/mês)`,
           auto_recurring: {
             frequency: 1,
             frequency_type: "months",

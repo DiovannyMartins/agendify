@@ -8,7 +8,7 @@ import { buildCustomerHistory, filterCustomers } from "@/lib/customers/history";
 // ONE customer with TWO bookings in the Clientes history. RUN: npm run
 // test:integration (Node 22+). Requires .env.local with valid keys.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `clientes.${stamp}@agendify.dev`;
+const EMAIL = `clientes.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 const DISPLAY_NAME = "Dona Ana";
 
@@ -140,7 +140,7 @@ describe("INC-1: histórico de clientes (dedup por business_id + phone)", () => 
   });
 
   it("an outsider cannot read this business's customers (RLS)", async () => {
-    const OUTSIDER_EMAIL = `outsider.clientes.${stamp}@agendify.dev`;
+    const OUTSIDER_EMAIL = `outsider.clientes.${stamp}@agendfined.dev`;
     await admin.auth.admin.createUser({ email: OUTSIDER_EMAIL, password: PASSWORD, email_confirm: true });
     const outsider = await anonClientForUser(OUTSIDER_EMAIL, PASSWORD);
     const { data } = await outsider.from("customers").select("id").eq("business_id", businessId);

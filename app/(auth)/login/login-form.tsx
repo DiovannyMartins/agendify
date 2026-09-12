@@ -37,7 +37,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Entrar</CardTitle>
-        <CardDescription>Acesse seu painel do Agendify.</CardDescription>
+        <CardDescription>Acesse seu painel do AgendFined.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>

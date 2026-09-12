@@ -43,6 +43,9 @@ next-env.d.ts
 # dev logs
 .dev.log
 .dev.err.log
+dev-server.log
+tunnel.log
+tunnel.log.err
 
 # AI agents and skills (untracked by default)
 .agents/

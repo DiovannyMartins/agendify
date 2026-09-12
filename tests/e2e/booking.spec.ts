@@ -8,7 +8,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SECRET = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const PASSWORD = "senha12345";
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `e2e.${stamp}@agendify.dev`;
+const EMAIL = `e2e.${stamp}@agendfined.dev`;
 const SLUG = `e2e-barbearia-${stamp}`;
 // The public code captured from the confirmation screen in test 1, reused by
 // the consultation test that follows (serial mode).

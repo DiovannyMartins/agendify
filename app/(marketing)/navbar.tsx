@@ -36,7 +36,7 @@ export function Navbar() {
           <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform duration-300 group-hover:scale-105">
             <CalendarClock className="size-4" />
           </span>
-          <span>Agendify</span>
+          <span>AgendFined</span>
         </Link>
 
         <div className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">

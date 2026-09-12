@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Termos de Uso — Agendify" };
+export const metadata: Metadata = { title: "Termos de Uso — AgendFined" };
 
 export default function TermosPage() {
   return (
@@ -11,7 +11,7 @@ export default function TermosPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-medium">1. Aceitação dos termos</h2>
         <p>
-          Ao criar uma conta ou usar o Agendify, você concorda com estes Termos de Uso e com a
+          Ao criar uma conta ou usar o AgendFined, você concorda com estes Termos de Uso e com a
           Política de Privacidade. Se não concordar, não utilize o serviço.
         </p>
       </section>
@@ -19,7 +19,7 @@ export default function TermosPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-medium">2. O serviço</h2>
         <p>
-          O Agendify é uma plataforma de agendamento online que permite que profissionais e
+          O AgendFined é uma plataforma de agendamento online que permite que profissionais e
           pequenos negócios ofereçam reservas de serviços por uma página pública.
         </p>
       </section>
@@ -51,7 +51,7 @@ export default function TermosPage() {
 
       <section className="space-y-3">
         <h2 className="text-xl font-medium">6. Contato</h2>
-        <p>Dúvidas sobre estes Termos: suporte@agendify.app.</p>
+        <p>Dúvidas sobre estes Termos: suporte@agendfined.app.</p>
       </section>
     </article>
   );

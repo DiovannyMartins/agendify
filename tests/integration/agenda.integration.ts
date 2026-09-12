@@ -8,7 +8,7 @@ import { adminClient, retryOnFk } from "./index";
 // and a public_code. RUN: npm run test:integration. Requires .env.local with
 // valid keys.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `agenda.${stamp}@agendify.dev`;
+const EMAIL = `agenda.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 const DISPLAY_NAME = "Dona Ana";
 
@@ -84,7 +84,7 @@ beforeAll(async () => {
   // unique) used to prove business-level scheduling: a booking in a different
   // business can share the same slot.
   const { data: otherCreated } = await admin.auth.admin.createUser({
-    email: `other.${stamp}@agendify.dev`,
+    email: `other.${stamp}@agendfined.dev`,
     password: PASSWORD,
     email_confirm: true,
   });

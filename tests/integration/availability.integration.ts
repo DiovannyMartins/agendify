@@ -5,7 +5,7 @@ import { adminClient, retryOnFk } from "./index";
 // project. Requires .env.local with valid keys and the migration applied.
 // The constraint is partial on is_active, so only active faixas are compared.
 const stamp = Date.now().toString().slice(-8);
-const EMAIL = `avail.${stamp}@agendify.dev`;
+const EMAIL = `avail.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 let admin: ReturnType<typeof adminClient>;

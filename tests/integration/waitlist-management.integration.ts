@@ -13,9 +13,9 @@ import {
 // by cancel-waitlist.integration.ts); here we validate the management side.
 // RUN: npm run test:integration (requires the 0036 migration pushed).
 const stamp = Date.now().toString().slice(-8);
-const FREE_EMAIL = `wl-free.${stamp}@agendify.dev`;
-const PRO_EMAIL = `wl-pro.${stamp}@agendify.dev`;
-const OUTSIDER_EMAIL = `wl-out.${stamp}@agendify.dev`;
+const FREE_EMAIL = `wl-free.${stamp}@agendfined.dev`;
+const PRO_EMAIL = `wl-pro.${stamp}@agendfined.dev`;
+const OUTSIDER_EMAIL = `wl-out.${stamp}@agendfined.dev`;
 const PASSWORD = "senha12345";
 
 const SLOT = "2099-01-07T14:00:00.000Z";
@@ -67,7 +67,7 @@ async function createBookingAt(businessId: string, serviceId: string, startAt: s
     p_start_at: startAt,
     p_customer_name: "Cliente",
     p_customer_phone: phone,
-    p_customer_email: `cli.${stamp}@agendify.dev`,
+    p_customer_email: `cli.${stamp}@agendfined.dev`,
   });
   expect(error).toBeNull();
   return data!;
@@ -80,7 +80,7 @@ async function joinWaitlist(businessId: string, serviceId: string, startAt: stri
     p_start_at: startAt,
     p_customer_name: name,
     p_customer_phone: phone,
-    p_customer_email: `cli.${stamp}@agendify.dev`,
+    p_customer_email: `cli.${stamp}@agendfined.dev`,
   });
   expect(error).toBeNull();
   return data!;

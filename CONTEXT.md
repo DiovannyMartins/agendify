@@ -1,6 +1,6 @@
-# Agendify
+# AgendFined
 
-O Agendify é uma plataforma SaaS de agendamento online para profissionais e pequenos negócios. Um profissional configura seu negócio, serviços e disponibilidade; clientes reservam serviços em uma página pública por slug. Vocabulário canônico do domínio em pt-BR.
+O AgendFined é uma plataforma SaaS de agendamento online para profissionais e pequenos negócios. Um profissional configura seu negócio, serviços e disponibilidade; clientes reservam serviços em uma página pública por slug. Vocabulário canônico do domínio em pt-BR.
 
 ## Language
 
@@ -71,7 +71,7 @@ _Avoid_: Fuso, região, hora local
 ## Planos
 
 **Plano**:
-A camada de produto que determina quais recursos um negócio pode usar. No Agendify, um negócio está sempre em um de dois planos: Grátis ou PROFISSIONAL.
+A camada de produto que determina quais recursos um negócio pode usar. No AgendFined, um negócio está sempre em um de dois planos: Grátis ou PROFISSIONAL.
 _Avoid_: Pacote, tier, versão, nível
 
 **Grátis**:

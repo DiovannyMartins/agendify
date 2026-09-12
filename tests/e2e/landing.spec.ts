@@ -29,7 +29,7 @@ test("landing shows the two plans with price and privileges", async ({ page }) =
 
 test("auth and legal pages render", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByText("Acesse seu painel do Agendify.")).toBeVisible();
+  await expect(page.getByText("Acesse seu painel do AgendFined.")).toBeVisible();
   await page.goto("/cadastro");
   await expect(page.getByText("Comece a receber reservas grátis.")).toBeVisible();
   await page.goto("/privacidade");
